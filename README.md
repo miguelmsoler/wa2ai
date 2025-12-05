@@ -76,6 +76,10 @@ As development progresses, the repo will evolve toward:
 ```
 wa2ai/
   README.md
+  project/
+    wa2ai_design.md
+    wa2ai_phase_1_gantt.md
+    wa2ai_phase_1_task_breakdown.md
   docs/
     phase1-lab.md
     phase2-prod.md
@@ -96,6 +100,10 @@ wa2ai/
     docker-compose.lab.yml
     docker-compose.prod.yml
 ```
+
+**Note:** 
+- `project/` contains project management documentation (GANTT, task breakdowns, design documents).
+- `docs/` contains technical solution documentation (architecture, API references, operation guides).
 
 ---
 
