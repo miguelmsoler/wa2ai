@@ -145,6 +145,9 @@ wa2ai/
 │   ├── phase1-lab.md        # Phase 1 technical documentation
 │   └── phase2-prod.md       # Phase 2 technical documentation
 │
+├── refs/                    # Symbolic links to external projects and resources (not versioned, local use only)
+│   └── (symlinks to agents, libraries, documentation)
+│
 ├── .env                     # Backend environment variables (not in git)
 ├── .env.example             # Example backend environment variables
 ├── package.json             # Project configuration and dependencies
@@ -492,6 +495,12 @@ When AI agents are used for development assistance:
 7. **Temporary files**
    - When creating temporary files to answer a request (instead of responding in chat), always create them in `/tmp/` to avoid creating unnecessary files within the project structure.
    - Never create temporary files in the project root or any project directory.
+
+8. **Using the `refs/` directory**
+   - The `refs/` directory contains symbolic links to external projects, agents, libraries, and documentation that can help with implementation.
+   - These symlinks provide access to reference implementations, related projects, or useful resources without duplicating code.
+   - When implementing features, check `refs/` for relevant examples or patterns from related projects.
+   - The `refs/` directory is **not versioned** (it's in `.gitignore`) and is for local use only. Each developer can add their own symlinks to help agents with implementation.
 
 This AGENTS.md is the source of truth for agents about how to build, test, and extend the project.
 
