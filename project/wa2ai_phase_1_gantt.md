@@ -6,13 +6,13 @@ Estimated duration: **8–11 days** working **4 hours per day** (total: **33–4
 
 ## 🗓️ Day 1 — Environment preparation (4–6 h)
 
-- Review current ADK agent HTTP contract (0.5 h).
-- Verify agent execution environment (0.5 h).
-- Manually test the endpoint with curl/HTTPie (0.5 h).
-- Create repo and base structure (1 h).
-- Configure Node.js + TypeScript (0.5–1 h).
-- Install/configure Docker and docker-compose (1 h).
-- Create initial `docker-compose.lab.yml` (1–1.5 h).
++ Review current ADK agent HTTP contract (0.5 h).
++ Verify agent execution environment (0.5 h).
++ Manually test the endpoint with curl/HTTPie (0.5 h).
++ Create repo and base structure (1 h).
++ Configure Node.js + TypeScript (0.5–1 h).
++ Install/configure Docker and docker-compose (1 h).
++ Create initial `docker-compose.lab.yml` (1–1.5 h).
 
 ---
 

@@ -1,0 +1,46 @@
+{
+  "name": "wa2ai",
+  "version": "0.1.0",
+  "description": "Gateway connecting WhatsApp with AI agents (ADK or others), enabling message routing based on configurable rules",
+  "type": "module",
+  "main": "router/src/index.ts",
+  "scripts": {
+    "dev": "tsx watch router/src/index.ts",
+    "build": "tsc",
+    "start": "node dist/router/src/index.js",
+    "test": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "whatsapp",
+    "ai",
+    "agents",
+    "adk",
+    "routing",
+    "gateway"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fastify": "^4.26.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.4",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

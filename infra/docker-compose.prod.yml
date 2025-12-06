@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  wa2ai-prod:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.prod
+    container_name: wa2ai-prod
+    ports:
+      - "3001:3000"
+    environment:
+      - WA2AI_DEBUG=${WA2AI_DEBUG:-false}
+      - WA2AI_PORT=3000
+      - WA2AI_CLOUD_API_TOKEN=${WA2AI_CLOUD_API_TOKEN}
+      - WA2AI_CLOUD_API_PHONE_NUMBER_ID=${WA2AI_CLOUD_API_PHONE_NUMBER_ID}
+    networks:
+      - wa2ai-network
+    restart: unless-stopped
+
+networks:
+  wa2ai-network:
+    driver: bridge
+

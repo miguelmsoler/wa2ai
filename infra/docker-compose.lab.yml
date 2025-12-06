@@ -1,0 +1,68 @@
+services:
+  evolution-api-lab:
+    image: atendai/evolution-api:latest
+    container_name: evolution-api-lab
+    ports:
+      - "8080:8080"
+    environment:
+      # Authentication
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-default_key_change_me}
+      # Server configuration
+      - SERVER_URL=http://evolution-api-lab:8080
+      - SERVER_PORT=8080
+      # Database (optional, uses in-memory by default)
+      - DATABASE_ENABLED=false
+      # Session configuration
+      - CONFIG_SESSION_PHONE_CLIENT=Chrome
+      - CONFIG_SESSION_PHONE_NAME=wa2ai-lab
+      # Webhook configuration (will be set up later)
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_GLOBAL_URL=http://wa2ai-lab:3000/webhooks/whatsapp/lab
+    volumes:
+      - evolution_data:/evolution/.store
+    networks:
+      - wa2ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  wa2ai-lab:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.lab
+    container_name: wa2ai-lab
+    ports:
+      - "3000:3000"
+    environment:
+      # Debug mode
+      - WA2AI_DEBUG=${WA2AI_DEBUG:-false}
+      # Server port
+      - WA2AI_PORT=3000
+      # Evolution API configuration
+      - WA2AI_EVOLUTION_API_URL=http://evolution-api-lab:8080
+      - WA2AI_EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-default_key_change_me}
+    depends_on:
+      evolution-api-lab:
+        condition: service_healthy
+    networks:
+      - wa2ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  evolution_data:
+    driver: local
+
+networks:
+  wa2ai-network:
+    driver: bridge
+
