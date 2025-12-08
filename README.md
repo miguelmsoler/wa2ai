@@ -109,12 +109,16 @@ wa2ai/
 
 ## 🔧 Requirements (Phase 1)
 
+### Development Tools
 * Node.js 18+
 * TypeScript
 * Docker & docker-compose
+
+### External Services
 * A WhatsApp number for laboratory mode
-* Evolution API Docker image
 * An ADK agent accessible via HTTP
+
+**Note:** Evolution API is automatically deployed via Docker Compose using the `atendai/evolution-api:v2.1.1` image. See `infra/docker-compose.lab.yml` for configuration details.
 
 ---
 

@@ -22,11 +22,23 @@ Create a `.env` file in the project root with:
 
 ```bash
 # Evolution API
-EVOLUTION_API_KEY=your_secure_api_key_here
+# The API key is a value YOU define - it's not obtained from Evolution API.
+# For local development, you can use any value (e.g., "dev-key" or "test-key").
+# For production, generate a secure random key using: openssl rand -hex 32
+EVOLUTION_API_KEY=your_api_key_here
+EVOLUTION_LOG_LEVEL=INFO  # Optional: ERROR, WARN, INFO, DEBUG, LOG, VERBOSE, DARK, WEBHOOKS
 
 # wa2ai Debug (optional)
 WA2AI_DEBUG=false
 ```
+
+**Generating a secure API key (optional for production):**
+```bash
+# Generate a 256-bit random key (64 hex characters)
+openssl rand -hex 32
+```
+
+**Note:** For local development, you can use a simple value like `dev-key` or `test-key`. The API key is only used for authentication between wa2ai and Evolution API within your Docker network.
 
 ### Starting the Lab Environment
 
@@ -47,7 +59,9 @@ docker compose -f infra/docker-compose.lab.yml down -v
 ### Services
 
 - **evolution-api-lab** (port 8080)
-  - Evolution API instance for laboratory testing
+  - Evolution API v2.1.1 instance for laboratory testing
+  - In-memory database (sessions are lost on container restart)
+  - Log level configurable via `EVOLUTION_LOG_LEVEL` environment variable
   - Webhook configured to point to wa2ai-lab
   - Access Evolution API dashboard at http://localhost:8080
 

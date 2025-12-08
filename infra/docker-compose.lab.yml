@@ -1,6 +1,6 @@
 services:
   evolution-api-lab:
-    image: atendai/evolution-api:latest
+    image: atendai/evolution-api:v2.1.1
     container_name: evolution-api-lab
     ports:
       - "8080:8080"
@@ -10,12 +10,14 @@ services:
       # Server configuration
       - SERVER_URL=http://evolution-api-lab:8080
       - SERVER_PORT=8080
-      # Database (optional, uses in-memory by default)
+      # Database (in-memory for lab environment)
       - DATABASE_ENABLED=false
+      # Logging (configurable per developer)
+      - LOG_LEVEL=${EVOLUTION_LOG_LEVEL:-INFO}
       # Session configuration
       - CONFIG_SESSION_PHONE_CLIENT=Chrome
       - CONFIG_SESSION_PHONE_NAME=wa2ai-lab
-      # Webhook configuration (will be set up later)
+      # Webhook configuration
       - WEBHOOK_GLOBAL_ENABLED=true
       - WEBHOOK_GLOBAL_URL=http://wa2ai-lab:3000/webhooks/whatsapp/lab
     volumes:
