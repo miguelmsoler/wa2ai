@@ -37,15 +37,21 @@ Independent services (Python/ADK), exposed via HTTP, that receive messages and r
 
 ## 3. Phase 1 – Laboratory
 ### 3.1 Services to deploy
-1. **evolution-api-lab**
-   - Docker container.
+1. **postgres**
+   - PostgreSQL 16 database container.
+   - Stores Evolution API data (instances, messages, contacts, chats, etc.).
+   - Required by Evolution API v2.1.1.
+
+2. **evolution-api-lab**
+   - Docker container (Evolution API v2.1.1).
+   - Connected to PostgreSQL database.
    - Associated with a test WhatsApp number.
 
-2. **wa2ai-lab**
+3. **wa2ai-lab**
    - Docker container or Cloud Run.
    - Configured to use `EvolutionProvider`.
 
-3. **ADK Agents (lab)**
+4. **ADK Agents (lab)**
    - Independent deployment.
 
 ### 3.2 Flow
@@ -56,6 +62,7 @@ Independent services (Python/ADK), exposed via HTTP, that receive messages and r
 
 ### 3.3 Infrastructure
 Suggested file `docker-compose.lab.yml` with:
+- postgres (PostgreSQL database)
 - evolution-api-lab
 - wa2ai-lab
 

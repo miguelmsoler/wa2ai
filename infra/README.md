@@ -58,12 +58,19 @@ docker compose -f infra/docker-compose.lab.yml down -v
 
 ### Services
 
+- **postgres** (internal port 5432)
+  - PostgreSQL 16 database for Evolution API
+  - Stores instances, messages, contacts, chats, labels, and historic data
+  - Data persisted in Docker volume `postgres_data`
+  - Health check: `pg_isready`
+
 - **evolution-api-lab** (port 8080)
   - Evolution API v2.1.1 instance for laboratory testing
-  - In-memory database (sessions are lost on container restart)
+  - Connected to PostgreSQL database (required by Evolution API v2)
   - Log level configurable via `EVOLUTION_LOG_LEVEL` environment variable
   - Webhook configured to point to wa2ai-lab
   - Access Evolution API dashboard at http://localhost:8080
+  - Health check endpoint: http://localhost:8080/ (root endpoint)
 
 - **wa2ai-lab** (port 3000)
   - wa2ai router service configured for lab environment
@@ -72,15 +79,15 @@ docker compose -f infra/docker-compose.lab.yml down -v
 
 ### Health Checks
 
-Both services include health checks:
+All services include health checks:
 
 ```bash
 # Check service status
 docker compose -f infra/docker-compose.lab.yml ps
 
-# Check health
-curl http://localhost:3000/health
-curl http://localhost:8080/health
+# Check health endpoints
+curl http://localhost:3000/health  # wa2ai-lab
+curl http://localhost:8080/        # evolution-api-lab (root endpoint)
 ```
 
 ### Building wa2ai Image

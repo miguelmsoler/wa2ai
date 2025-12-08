@@ -1,17 +1,50 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: evolution-postgres
+    environment:
+      - POSTGRES_DB=evolution_lab
+      - POSTGRES_USER=evolution
+      - POSTGRES_PASSWORD=evolution_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - wa2ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   evolution-api-lab:
     image: atendai/evolution-api:v2.1.1
     container_name: evolution-api-lab
     ports:
       - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       # Authentication
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-default_key_change_me}
       # Server configuration
       - SERVER_URL=http://evolution-api-lab:8080
       - SERVER_PORT=8080
-      # Database (in-memory for lab environment)
-      - DATABASE_ENABLED=false
+      # Database configuration (PostgreSQL for lab environment)
+      # See: https://doc.evolution-api.com/v2/en/requirements/database
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution_pass@postgres:5432/evolution_lab?schema=public
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution_exchange
+      # Choose what data to save in database
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - DATABASE_SAVE_DATA_LABELS=true
+      - DATABASE_SAVE_DATA_HISTORIC=true
       # Logging (configurable per developer)
       - LOG_LEVEL=${EVOLUTION_LOG_LEVEL:-INFO}
       # Session configuration
@@ -26,7 +59,7 @@ services:
       - wa2ai-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -48,6 +81,8 @@ services:
       - WA2AI_EVOLUTION_API_URL=http://evolution-api-lab:8080
       - WA2AI_EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-default_key_change_me}
     depends_on:
+      postgres:
+        condition: service_healthy
       evolution-api-lab:
         condition: service_healthy
     networks:
@@ -62,6 +97,8 @@ services:
 
 volumes:
   evolution_data:
+    driver: local
+  postgres_data:
     driver: local
 
 networks:

@@ -18,7 +18,7 @@ Estimated duration: **8–11 days** working **4 hours per day** (total: **33–4
 
 ## 🗓️ Day 2 — Evolution API: deployment (6–8 h)
 
-- Choose Evolution API image/tag + minimum config (0.5 h).
++ Choose Evolution API image/tag + minimum config (0.5 h).
 - Add service to docker-compose and start it (1 h).
 - Connect laboratory WhatsApp number - scan QR (1 h).
 - Send test message and validate reception (1 h).
