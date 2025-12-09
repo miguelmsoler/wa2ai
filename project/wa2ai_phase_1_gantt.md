@@ -34,7 +34,7 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 
 + Review Baileys library documentation (1–1.5 h).
 + Review Baileys examples and best practices (0.5–1 h).
-- Install Baileys dependencies (0.2 h).
++ Install Baileys dependencies (0.2 h).
 - Integrate QR code display/endpoint (0.5–1 h).
 - Handle connection state management (1 h).
 - Test WhatsApp connection and QR scan (0.5–1 h).

@@ -19,6 +19,7 @@ build/
 # IDE and editor files
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
@@ -78,4 +79,7 @@ out/
 
 # Refs directory - contains symlinks to external projects (local use only, not versioned)
 refs/
+
+# Baileys authentication state (contains WhatsApp session credentials)
+auth_info_baileys/
 

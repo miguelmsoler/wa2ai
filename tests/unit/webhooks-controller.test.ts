@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { registerWebhooks } from '../../router/src/webhooks-controller.js'
 import * as webhookAdapter from '../../router/src/core/webhook-adapter.js'
+import * as baileysConnection from '../../router/src/providers/baileys-connection.js'
+
+// Mock the baileys-connection module
+vi.mock('../../router/src/providers/baileys-connection.js', () => ({
+  getBaileysConnection: vi.fn(),
+}))
 
 /**
  * Helper to parse structured log entries from console.log calls.
@@ -16,25 +22,8 @@ function parseLogEntry(call: unknown[]): { level: string; message: string; conte
   }
 }
 
-/**
- * Helper to check if a log entry contains a specific message.
- */
-function logContainsMessage(calls: unknown[][], message: string): boolean {
-  return calls.some(call => {
-    const entry = parseLogEntry(call)
-    return entry?.message === message || entry?.message?.includes(message)
-  })
-}
-
-/**
- * Helper to check if a log entry contains specific context.
- */
-function logContainsContext(calls: unknown[][], contextKey: string, contextValue: unknown): boolean {
-  return calls.some(call => {
-    const entry = parseLogEntry(call)
-    return entry?.context && entry.context[contextKey] === contextValue
-  })
-}
+// Note: logContainsMessage and logContainsContext helpers removed as they were unused
+// parseLogEntry is used directly in tests that need to parse log output
 
 describe('WebhooksController', () => {
   let mockApp: FastifyInstance
@@ -416,6 +405,262 @@ describe('WebhooksController', () => {
 
       expect(mockReply.code).toHaveBeenCalledWith(200)
       expect(mockReply.send).toHaveBeenCalledWith({ status: 'healthy' })
+    })
+  })
+})
+
+describe('QR Code Endpoints', () => {
+  let mockApp: FastifyInstance
+  let mockRequest: FastifyRequest
+  let mockReply: FastifyReply
+  let consoleLogSpy: ReturnType<typeof vi.spyOn>
+  let mockBaileysConnection: {
+    getState: ReturnType<typeof vi.fn>
+    getQRCodeDataURL: ReturnType<typeof vi.fn>
+    hasQRCode: ReturnType<typeof vi.fn>
+  }
+
+  beforeEach(() => {
+    // Mock console.log
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {}) as ReturnType<typeof vi.spyOn>
+
+    // Mock Baileys connection
+    mockBaileysConnection = {
+      getState: vi.fn(),
+      getQRCodeDataURL: vi.fn(),
+      hasQRCode: vi.fn(),
+    }
+    vi.mocked(baileysConnection.getBaileysConnection).mockReturnValue(mockBaileysConnection as any)
+
+    // Mock FastifyReply
+    mockReply = {
+      code: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis(),
+      type: vi.fn().mockReturnThis(),
+    } as unknown as FastifyReply
+
+    // Mock FastifyRequest
+    mockRequest = {
+      body: {},
+      headers: {},
+    } as unknown as FastifyRequest
+
+    // Mock FastifyInstance with handlers storage
+    mockApp = {
+      post: vi.fn(),
+      get: vi.fn((route: string, handler: any) => {
+        if (route === '/qr') {
+          ;(mockApp as any).qrHandler = handler
+        } else if (route === '/qr/status') {
+          ;(mockApp as any).qrStatusHandler = handler
+        } else if (route === '/qr/image') {
+          ;(mockApp as any).qrImageHandler = handler
+        } else if (route === '/health') {
+          ;(mockApp as any).healthHandler = handler
+        }
+      }),
+    } as unknown as FastifyInstance
+
+    // Reset environment variable
+    process.env.WA2AI_DEBUG = 'false'
+  })
+
+  afterEach(() => {
+    consoleLogSpy.mockRestore()
+    vi.clearAllMocks()
+  })
+
+  describe('GET /qr', () => {
+    beforeEach(() => {
+      registerWebhooks(mockApp)
+    })
+
+    it('should return connected page when status is connected', async () => {
+      mockBaileysConnection.getState.mockReturnValue({
+        status: 'connected',
+        qrCode: null,
+        lastError: null,
+      })
+
+      const handler = (mockApp as any).qrHandler
+      const result = await handler(mockRequest, mockReply)
+
+      expect(mockReply.type).toHaveBeenCalledWith('text/html')
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(result).toContain('Connected')
+    })
+
+    it('should return QR code page when status is qr_ready', async () => {
+      mockBaileysConnection.getState.mockReturnValue({
+        status: 'qr_ready',
+        qrCode: 'mock-qr-string',
+        lastError: null,
+      })
+      mockBaileysConnection.getQRCodeDataURL.mockResolvedValue('data:image/png;base64,mockQR')
+
+      const handler = (mockApp as any).qrHandler
+      const result = await handler(mockRequest, mockReply)
+
+      expect(mockReply.type).toHaveBeenCalledWith('text/html')
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(result).toContain('Scan QR Code')
+      expect(result).toContain('data:image/png;base64,mockQR')
+    })
+
+    it('should return waiting page when status is connecting', async () => {
+      mockBaileysConnection.getState.mockReturnValue({
+        status: 'connecting',
+        qrCode: null,
+        lastError: null,
+      })
+
+      const handler = (mockApp as any).qrHandler
+      const result = await handler(mockRequest, mockReply)
+
+      expect(mockReply.type).toHaveBeenCalledWith('text/html')
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(result).toContain('Connecting...')
+    })
+
+    it('should return waiting page with error when there is an error', async () => {
+      mockBaileysConnection.getState.mockReturnValue({
+        status: 'disconnected',
+        qrCode: null,
+        lastError: 'Connection failed',
+      })
+
+      const handler = (mockApp as any).qrHandler
+      const result = await handler(mockRequest, mockReply)
+
+      expect(mockReply.type).toHaveBeenCalledWith('text/html')
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(result).toContain('Connection failed')
+    })
+
+    it('should log debug information when WA2AI_DEBUG is true', async () => {
+      process.env.WA2AI_DEBUG = 'true'
+      mockBaileysConnection.getState.mockReturnValue({
+        status: 'connected',
+        qrCode: null,
+        lastError: null,
+      })
+
+      registerWebhooks(mockApp)
+      const handler = (mockApp as any).qrHandler
+      await handler(mockRequest, mockReply)
+
+      // Check for debug logs
+      const debugLogs = consoleLogSpy.mock.calls.filter((call) => {
+        try {
+          const entry = JSON.parse(call[0] as string)
+          return entry.level === 'DEBUG' && entry.message.includes('QR endpoint')
+        } catch {
+          return false
+        }
+      })
+      expect(debugLogs.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('GET /qr/status', () => {
+    beforeEach(() => {
+      registerWebhooks(mockApp)
+    })
+
+    it('should return status when connected', async () => {
+      mockBaileysConnection.getState.mockReturnValue({
+        status: 'connected',
+        qrCode: null,
+        lastError: null,
+      })
+
+      const handler = (mockApp as any).qrStatusHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(mockReply.send).toHaveBeenCalledWith({
+        status: 'connected',
+        connected: true,
+        qrAvailable: false,
+        error: null,
+      })
+    })
+
+    it('should return status when QR is available', async () => {
+      mockBaileysConnection.getState.mockReturnValue({
+        status: 'qr_ready',
+        qrCode: 'mock-qr-string',
+        lastError: null,
+      })
+
+      const handler = (mockApp as any).qrStatusHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(mockReply.send).toHaveBeenCalledWith({
+        status: 'qr_ready',
+        connected: false,
+        qrAvailable: true,
+        error: null,
+      })
+    })
+
+    it('should return status with error when there is an error', async () => {
+      mockBaileysConnection.getState.mockReturnValue({
+        status: 'disconnected',
+        qrCode: null,
+        lastError: 'Connection failed',
+      })
+
+      const handler = (mockApp as any).qrStatusHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(mockReply.send).toHaveBeenCalledWith({
+        status: 'disconnected',
+        connected: false,
+        qrAvailable: false,
+        error: 'Connection failed',
+      })
+    })
+  })
+
+  describe('GET /qr/image', () => {
+    beforeEach(() => {
+      registerWebhooks(mockApp)
+    })
+
+    it('should return 404 when no QR code is available', async () => {
+      mockBaileysConnection.hasQRCode.mockReturnValue(false)
+
+      const handler = (mockApp as any).qrImageHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(404)
+      expect(mockReply.send).toHaveBeenCalledWith({ error: 'No QR code available' })
+    })
+
+    it('should return QR code image when available', async () => {
+      mockBaileysConnection.hasQRCode.mockReturnValue(true)
+      mockBaileysConnection.getQRCodeDataURL.mockResolvedValue('data:image/png;base64,mockQRData')
+
+      const handler = (mockApp as any).qrImageHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.type).toHaveBeenCalledWith('image/png')
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(mockReply.send).toHaveBeenCalled()
+    })
+
+    it('should return 500 when QR code generation fails', async () => {
+      mockBaileysConnection.hasQRCode.mockReturnValue(true)
+      mockBaileysConnection.getQRCodeDataURL.mockResolvedValue(null)
+
+      const handler = (mockApp as any).qrImageHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(500)
+      expect(mockReply.send).toHaveBeenCalledWith({ error: 'Failed to generate QR code image' })
     })
   })
 })

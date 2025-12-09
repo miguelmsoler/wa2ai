@@ -29,8 +29,10 @@ interface LogEntry {
 /**
  * Checks if debug mode is enabled.
  * Should be checked at runtime, not at module load time.
+ * 
+ * @returns true if WA2AI_DEBUG environment variable is 'true'
  */
-function isDebugMode(): boolean {
+export function isDebugMode(): boolean {
   return process.env.WA2AI_DEBUG === 'true'
 }
 
