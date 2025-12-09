@@ -12,11 +12,16 @@ import makeWASocket, {
   useMultiFileAuthState,
   type WASocket,
   type ConnectionState,
+  type proto,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import * as qrcode from 'qrcode'
 import { rm } from 'fs/promises'
 import { logger, isDebugMode } from '../core/logger.js'
+import type { IncomingMessage } from '../core/models.js'
+import type { MessageFilterOptions, MessageHandlerCallback } from '../core/message-handler.js'
+import { DEFAULT_MESSAGE_FILTER_OPTIONS } from '../core/message-handler.js'
+import { processBaileysMessages } from './baileys-message-adapter.js'
 
 /**
  * Connection status for the Baileys service.
@@ -98,6 +103,10 @@ export interface BaileysConnectionConfig {
   maxReconnectAttempts?: number
   /** Callback for state changes */
   onStateChange?: ConnectionStateCallback
+  /** Callback for incoming messages */
+  onMessage?: MessageHandlerCallback
+  /** Message filter options */
+  messageFilter?: MessageFilterOptions
 }
 
 /**
@@ -132,16 +141,27 @@ export class BaileysConnectionService {
   private lastError: string | null = null
   private lastDisconnectReason: number | null = null
   private needsCredentialsClear = false
-  private config: Required<Omit<BaileysConnectionConfig, 'onStateChange'>> & { onStateChange?: ConnectionStateCallback }
+  private config: Required<Omit<BaileysConnectionConfig, 'onStateChange' | 'onMessage'>> & { 
+    onStateChange?: ConnectionStateCallback
+    onMessage?: MessageHandlerCallback
+  }
   private reconnectAttempts = 0
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null
+  private messageHandlers: MessageHandlerCallback[] = []
 
   constructor(config: BaileysConnectionConfig = {}) {
     this.config = {
       authDir: config.authDir || './auth_info_baileys',
       printQRInTerminal: config.printQRInTerminal ?? isDebugMode(),
       maxReconnectAttempts: config.maxReconnectAttempts ?? 5,
+      messageFilter: config.messageFilter ?? DEFAULT_MESSAGE_FILTER_OPTIONS,
       onStateChange: config.onStateChange,
+      onMessage: config.onMessage,
+    }
+    
+    // Register initial message handler if provided
+    if (config.onMessage) {
+      this.messageHandlers.push(config.onMessage)
     }
   }
 
@@ -193,6 +213,11 @@ export class BaileysConnectionService {
         this.handleConnectionUpdate(update)
       })
 
+      // Handle incoming messages
+      this.socket.ev.on('messages.upsert', (event) => {
+        void this.handleMessagesUpsert(event)
+      })
+
       logger.info('[BaileysConnection] Connection initiated')
     } catch (error) {
       this.status = 'disconnected'
@@ -217,6 +242,183 @@ export class BaileysConnectionService {
       }
       this.config.onStateChange(this.getState())
     }
+  }
+
+  /**
+   * Handles incoming messages from Baileys.
+   * 
+   * This method processes `messages.upsert` events which contain
+   * new messages or message updates.
+   * 
+   * @param event - The messages upsert event from Baileys
+   */
+  private async handleMessagesUpsert(event: { 
+    type: 'notify' | 'append' | 'set'
+    messages: proto.IWebMessageInfo[] 
+  }): Promise<void> {
+    const { type, messages } = event
+
+    if (isDebugMode()) {
+      logger.debug('[BaileysConnection] Messages upsert event', {
+        type,
+        messageCount: messages.length,
+      })
+    }
+
+    // Only process new messages (notify), not history sync (append/set)
+    if (type !== 'notify') {
+      if (isDebugMode()) {
+        logger.debug('[BaileysConnection] Skipping non-notify messages', { type })
+      }
+      return
+    }
+
+    // Process and normalize messages
+    const normalizedMessages = processBaileysMessages(messages, this.config.messageFilter)
+
+    if (normalizedMessages.length === 0) {
+      if (isDebugMode()) {
+        logger.debug('[BaileysConnection] No messages to process after filtering')
+      }
+      return
+    }
+
+    logger.info('[BaileysConnection] Processing incoming messages', {
+      count: normalizedMessages.length,
+    })
+
+    // Call all registered message handlers
+    for (const message of normalizedMessages) {
+      await this.dispatchMessage(message)
+    }
+  }
+
+  /**
+   * Dispatches a message to all registered handlers.
+   * 
+   * @param message - The normalized incoming message
+   */
+  private async dispatchMessage(message: IncomingMessage): Promise<void> {
+    if (isDebugMode()) {
+      logger.debug('[BaileysConnection] Dispatching message', {
+        id: message.id,
+        from: message.from,
+        channelId: message.channelId,
+        handlerCount: this.messageHandlers.length,
+      })
+    }
+
+    if (this.messageHandlers.length === 0) {
+      logger.warn('[BaileysConnection] No message handlers registered')
+      return
+    }
+
+    for (const handler of this.messageHandlers) {
+      try {
+        const result = await handler(message)
+        
+        if (isDebugMode()) {
+          logger.debug('[BaileysConnection] Handler result', {
+            messageId: message.id,
+            success: result.success,
+            hasResponse: !!result.response,
+          })
+        }
+
+        // If handler returns a response, send it back
+        if (result.success && result.response) {
+          await this.sendTextMessage(message.from, result.response)
+        }
+      } catch (error) {
+        logger.error('[BaileysConnection] Message handler error', {
+          messageId: message.id,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
+  }
+
+  /**
+   * Sends a text message via WhatsApp.
+   * 
+   * @param to - The recipient JID
+   * @param text - The message text
+   * @returns Promise that resolves when the message is sent
+   */
+  async sendTextMessage(to: string, text: string): Promise<void> {
+    if (!this.socket) {
+      throw new Error('Not connected to WhatsApp')
+    }
+
+    if (isDebugMode()) {
+      logger.debug('[BaileysConnection] Sending text message', {
+        to,
+        textLength: text.length,
+      })
+    }
+
+    try {
+      await this.socket.sendMessage(to, { text })
+      logger.info('[BaileysConnection] Message sent', { to })
+    } catch (error) {
+      logger.error('[BaileysConnection] Failed to send message', {
+        to,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      throw error
+    }
+  }
+
+  /**
+   * Registers a message handler callback.
+   * 
+   * Multiple handlers can be registered and they will be called
+   * in order for each incoming message.
+   * 
+   * @param handler - The message handler callback
+   * @returns Function to unregister the handler
+   * 
+   * @example
+   * ```typescript
+   * const unregister = connection.onMessage(async (message) => {
+   *   console.log('Received:', message.text)
+   *   return { success: true, response: 'Got it!' }
+   * })
+   * 
+   * // Later, to unregister:
+   * unregister()
+   * ```
+   */
+  onMessage(handler: MessageHandlerCallback): () => void {
+    if (isDebugMode()) {
+      logger.debug('[BaileysConnection] Registering message handler', {
+        currentHandlerCount: this.messageHandlers.length,
+      })
+    }
+
+    this.messageHandlers.push(handler)
+
+    // Return unregister function
+    return () => {
+      const index = this.messageHandlers.indexOf(handler)
+      if (index !== -1) {
+        this.messageHandlers.splice(index, 1)
+        if (isDebugMode()) {
+          logger.debug('[BaileysConnection] Unregistered message handler', {
+            remainingHandlers: this.messageHandlers.length,
+          })
+        }
+      }
+    }
+  }
+
+  /**
+   * Gets the number of registered message handlers.
+   * 
+   * @returns The count of registered handlers
+   */
+  getMessageHandlerCount(): number {
+    return this.messageHandlers.length
   }
 
   /**

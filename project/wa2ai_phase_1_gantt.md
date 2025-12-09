@@ -37,8 +37,8 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 + Install Baileys dependencies (0.2 h).
 + Integrate QR code display/endpoint (0.5–1 h).
 + Handle connection state management (1 h).
-- Test WhatsApp connection and QR scan (0.5–1 h).
-- Implement message event handlers (1–1.5 h).
++ Test WhatsApp connection and QR scan (0.5–1 h).
++ Implement message event handlers (1–1.5 h).
 - Integrate with webhooks-controller or direct routing (0.5–1 h).
 - Test message reception end-to-end (0.5–1 h).
 - Create/update `docker-compose.lab.yml` for Baileys mode (0.5 h).
