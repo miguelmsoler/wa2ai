@@ -21,12 +21,18 @@ vi.mock('qrcode', () => ({
   toString: vi.fn(),
 }))
 
+vi.mock('fs/promises', () => ({
+  rm: vi.fn(),
+}))
+
 // Import after mocking
 import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys'
 import * as qrcode from 'qrcode'
+import { rm } from 'fs/promises'
 import {
   BaileysConnectionService,
   getBaileysConnection,
+  getDisconnectReasonDescription,
 } from '../../router/src/providers/baileys-connection.js'
 
 describe('BaileysConnectionService', () => {
@@ -114,7 +120,35 @@ describe('BaileysConnectionService', () => {
         status: 'disconnected',
         qrCode: null,
         lastError: null,
+        lastDisconnectReason: null,
+        lastDisconnectDescription: null,
+        reconnectAttempt: 0,
+        needsCredentialsClear: false,
       })
+    })
+
+    it('should include disconnect reason after connection close', async () => {
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      // Simulate connection close with status code
+      const boomError = {
+        output: { statusCode: DisconnectReason.connectionLost },
+        message: 'Connection lost',
+      }
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({
+          connection: 'close',
+          lastDisconnect: {
+            error: boomError as any,
+            date: new Date(),
+          },
+        })
+      }
+
+      const state = service.getState()
+      expect(state.lastDisconnectReason).toBe(DisconnectReason.connectionLost)
+      expect(state.lastDisconnectDescription).toContain('network')
     })
   })
 
@@ -209,11 +243,12 @@ describe('BaileysConnectionService', () => {
       expect(state.lastError).toBeNull()
     })
 
-    it('should update state to disconnected when connection closes', async () => {
+    it('should update state to reconnecting when connection closes with recoverable error', async () => {
+      vi.useFakeTimers()
       const service = new BaileysConnectionService()
       await service.connect()
 
-      // Simulate connection close
+      // Simulate connection close with generic error (triggers reconnect)
       if (connectionUpdateHandler) {
         connectionUpdateHandler({
           connection: 'close',
@@ -225,8 +260,34 @@ describe('BaileysConnectionService', () => {
       }
 
       const state = service.getState()
-      expect(state.status).toBe('disconnected')
+      // Without a status code, it will try to reconnect
+      expect(state.status).toBe('reconnecting')
       expect(state.lastError).toBe('Connection lost')
+      vi.useRealTimers()
+    })
+
+    it('should update state to disconnected when logged out', async () => {
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      // Simulate logged out (no reconnect)
+      const boomError = {
+        output: { statusCode: DisconnectReason.loggedOut },
+        message: 'Logged out',
+      }
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({
+          connection: 'close',
+          lastDisconnect: {
+            error: boomError as any,
+            date: new Date(),
+          },
+        })
+      }
+
+      const state = service.getState()
+      expect(state.status).toBe('disconnected')
+      expect(state.needsCredentialsClear).toBe(true)
     })
 
     it('should not schedule reconnection when logged out', async () => {
@@ -416,18 +477,28 @@ describe('BaileysConnectionService', () => {
         connectionUpdateHandler({ connection: 'open' })
       }
 
-      service.disconnect()
+      await service.disconnect()
 
       expect(mockSocket.end).toHaveBeenCalled()
       expect(service.getState().status).toBe('disconnected')
       expect(service.getSocket()).toBeNull()
     })
 
-    it('should handle disconnect when not connected', () => {
+    it('should handle disconnect when not connected', async () => {
       const service = new BaileysConnectionService()
 
       // Should not throw
-      expect(() => service.disconnect()).not.toThrow()
+      await expect(service.disconnect()).resolves.not.toThrow()
+    })
+
+    it('should clear credentials when requested', async () => {
+      vi.mocked(rm).mockResolvedValue(undefined)
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      await service.disconnect(true)
+
+      expect(rm).toHaveBeenCalledWith('./auth_info_baileys', { recursive: true, force: true })
     })
   })
 
@@ -513,7 +584,7 @@ describe('BaileysConnectionService', () => {
       expect(warnLogs.length).toBeGreaterThan(0)
     })
 
-    it('should log error when logged out', async () => {
+    it('should log warning when logged out', async () => {
       const service = new BaileysConnectionService()
       await service.connect()
 
@@ -532,16 +603,253 @@ describe('BaileysConnectionService', () => {
         })
       }
 
-      const errorLogs = consoleErrorSpy.mock.calls.filter((call) => {
+      // Logged out triggers a warn log with reason
+      const warnLogs = consoleWarnSpy.mock.calls.filter((call) => {
         try {
           const entry = JSON.parse(call[0] as string)
-          return entry.level === 'ERROR' && entry.message.includes('Logged out')
+          return entry.level === 'WARNING' && entry.context?.reason?.includes('Logged out')
         } catch {
           return false
         }
       })
-      expect(errorLogs.length).toBeGreaterThan(0)
+      expect(warnLogs.length).toBeGreaterThan(0)
     })
+  })
+
+  describe('checkHealth', () => {
+    it('should return healthy when connected', async () => {
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({ connection: 'open' })
+      }
+
+      const health = service.checkHealth()
+      expect(health.healthy).toBe(true)
+      expect(health.status).toBe('connected')
+    })
+
+    it('should return unhealthy when disconnected', () => {
+      const service = new BaileysConnectionService()
+
+      const health = service.checkHealth()
+      expect(health.healthy).toBe(false)
+      expect(health.status).toBe('disconnected')
+      expect(health.reason).toBe('Not connected')
+    })
+
+    it('should return unhealthy when waiting for QR', async () => {
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({ qr: 'mock-qr' })
+      }
+
+      const health = service.checkHealth()
+      expect(health.healthy).toBe(false)
+      expect(health.status).toBe('qr_ready')
+      expect(health.reason).toContain('QR code')
+    })
+
+    it('should return unhealthy when reconnecting', async () => {
+      vi.useFakeTimers()
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      // Simulate connection lost (should trigger reconnect)
+      const boomError = {
+        output: { statusCode: DisconnectReason.connectionLost },
+        message: 'Connection lost',
+      }
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({
+          connection: 'close',
+          lastDisconnect: {
+            error: boomError as any,
+            date: new Date(),
+          },
+        })
+      }
+
+      const health = service.checkHealth()
+      expect(health.healthy).toBe(false)
+      expect(health.status).toBe('reconnecting')
+      expect(health.reason).toContain('Reconnecting')
+
+      vi.useRealTimers()
+    })
+  })
+
+  describe('clearCredentials', () => {
+    it('should clear credentials successfully', async () => {
+      vi.mocked(rm).mockResolvedValue(undefined)
+      const service = new BaileysConnectionService()
+
+      await service.clearCredentials()
+
+      expect(rm).toHaveBeenCalledWith('./auth_info_baileys', { recursive: true, force: true })
+    })
+
+    it('should throw error when clearing credentials fails', async () => {
+      vi.mocked(rm).mockRejectedValue(new Error('Permission denied'))
+      const service = new BaileysConnectionService()
+
+      await expect(service.clearCredentials()).rejects.toThrow('Permission denied')
+      expect(consoleErrorSpy).toHaveBeenCalled()
+    })
+  })
+
+  describe('onStateChange callback', () => {
+    it('should call callback when state changes', async () => {
+      const onStateChange = vi.fn()
+      const service = new BaileysConnectionService({ onStateChange })
+      await service.connect()
+
+      // Simulate QR code
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({ qr: 'mock-qr' })
+      }
+
+      expect(onStateChange).toHaveBeenCalled()
+      const lastCall = onStateChange.mock.calls[onStateChange.mock.calls.length - 1][0]
+      expect(lastCall.status).toBe('qr_ready')
+    })
+
+    it('should call callback on connection open', async () => {
+      const onStateChange = vi.fn()
+      const service = new BaileysConnectionService({ onStateChange })
+      await service.connect()
+
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({ connection: 'open' })
+      }
+
+      expect(onStateChange).toHaveBeenCalled()
+      const lastCall = onStateChange.mock.calls[onStateChange.mock.calls.length - 1][0]
+      expect(lastCall.status).toBe('connected')
+    })
+  })
+
+  describe('disconnect reasons', () => {
+    it('should set needsCredentialsClear for badSession', async () => {
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      const boomError = {
+        output: { statusCode: DisconnectReason.badSession },
+        message: 'Bad session',
+      }
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({
+          connection: 'close',
+          lastDisconnect: {
+            error: boomError as any,
+            date: new Date(),
+          },
+        })
+      }
+
+      const state = service.getState()
+      expect(state.needsCredentialsClear).toBe(true)
+    })
+
+    it('should not reconnect when connection replaced', async () => {
+      vi.useFakeTimers()
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      const boomError = {
+        output: { statusCode: DisconnectReason.connectionReplaced },
+        message: 'Connection replaced',
+      }
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({
+          connection: 'close',
+          lastDisconnect: {
+            error: boomError as any,
+            date: new Date(),
+          },
+        })
+      }
+
+      // State should be disconnected, not reconnecting
+      expect(service.getState().status).toBe('disconnected')
+
+      vi.useRealTimers()
+    })
+
+    it('should reconnect on connectionLost', async () => {
+      vi.useFakeTimers()
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      const boomError = {
+        output: { statusCode: DisconnectReason.connectionLost },
+        message: 'Connection lost',
+      }
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({
+          connection: 'close',
+          lastDisconnect: {
+            error: boomError as any,
+            date: new Date(),
+          },
+        })
+      }
+
+      expect(service.getState().status).toBe('reconnecting')
+
+      vi.useRealTimers()
+    })
+  })
+
+  describe('resetReconnectCounter', () => {
+    it('should reset reconnect counter and clear error state', async () => {
+      const service = new BaileysConnectionService()
+      await service.connect()
+
+      // Simulate connection close to set error state
+      const boomError = {
+        output: { statusCode: DisconnectReason.connectionLost },
+        message: 'Connection lost',
+      }
+      if (connectionUpdateHandler) {
+        connectionUpdateHandler({
+          connection: 'close',
+          lastDisconnect: {
+            error: boomError as any,
+            date: new Date(),
+          },
+        })
+      }
+
+      expect(service.getState().reconnectAttempt).toBeGreaterThan(0)
+      expect(service.getState().lastError).not.toBeNull()
+
+      service.resetReconnectCounter()
+
+      expect(service.getState().reconnectAttempt).toBe(0)
+      expect(service.getState().lastError).toBeNull()
+      expect(service.getState().lastDisconnectReason).toBeNull()
+    })
+  })
+})
+
+describe('getDisconnectReasonDescription', () => {
+  it('should return correct description for known reasons', () => {
+    expect(getDisconnectReasonDescription(DisconnectReason.loggedOut)).toContain('Logged out')
+    expect(getDisconnectReasonDescription(DisconnectReason.badSession)).toContain('Bad session')
+    expect(getDisconnectReasonDescription(DisconnectReason.connectionReplaced)).toContain('replaced')
+  })
+
+  it('should return unknown for undefined', () => {
+    expect(getDisconnectReasonDescription(undefined)).toBe('Unknown reason')
+  })
+
+  it('should return unknown for unrecognized codes', () => {
+    expect(getDisconnectReasonDescription(999)).toContain('Unknown reason')
   })
 })
 

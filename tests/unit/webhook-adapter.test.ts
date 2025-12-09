@@ -6,7 +6,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { normalizeEvolutionApiWebhook } from '../../router/src/core/webhook-adapter.js'
-import * as logger from '../../router/src/core/logger.js'
 
 describe('WebhookAdapter', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>

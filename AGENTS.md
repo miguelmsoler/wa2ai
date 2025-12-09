@@ -502,5 +502,10 @@ When AI agents are used for development assistance:
    - When implementing features, check `refs/` for relevant examples or patterns from related projects.
    - The `refs/` directory is **not versioned** (it's in `.gitignore`) and is for local use only. Each developer can add their own symlinks to help agents with implementation.
 
+9. **Git operations**
+   - **Never make commits without explicit user request.** Only commit when the user explicitly asks for it.
+   - Do not push to remote repositories unless explicitly requested.
+   - Do not modify git configuration.
+
 This AGENTS.md is the source of truth for agents about how to build, test, and extend the project.
 

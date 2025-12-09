@@ -33,6 +33,10 @@ COPY --from=builder /app/dist ./dist
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
+# Create Baileys auth directory with correct permissions
+RUN mkdir -p /app/auth_info_baileys && \
+    chown -R nodejs:nodejs /app/auth_info_baileys
+
 USER nodejs
 
 # Expose port

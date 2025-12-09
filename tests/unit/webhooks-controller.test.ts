@@ -8,21 +8,6 @@ import * as baileysConnection from '../../router/src/providers/baileys-connectio
 vi.mock('../../router/src/providers/baileys-connection.js', () => ({
   getBaileysConnection: vi.fn(),
 }))
-
-/**
- * Helper to parse structured log entries from console.log calls.
- */
-function parseLogEntry(call: unknown[]): { level: string; message: string; context?: Record<string, unknown> } | null {
-  if (call.length === 0) return null
-  const logString = call[0] as string
-  try {
-    return JSON.parse(logString)
-  } catch {
-    return null
-  }
-}
-
-// Note: logContainsMessage and logContainsContext helpers removed as they were unused
 // parseLogEntry is used directly in tests that need to parse log output
 
 describe('WebhooksController', () => {
