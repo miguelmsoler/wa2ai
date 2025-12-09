@@ -9,6 +9,9 @@ import fastify from 'fastify'
 import { registerWebhooks } from './webhooks-controller.js'
 import { logger } from './core/logger.js'
 import { getBaileysConnection } from './providers/baileys-connection.js'
+import { InMemoryRoutesRepository } from './core/routes-repository.js'
+import { RouterService } from './core/router-service.js'
+import { MessageRouter, setupBaileysDirectRouting } from './core/message-router.js'
 
 const DEBUG = process.env.WA2AI_DEBUG === 'true'
 const PORT = parseInt(process.env.WA2AI_PORT || '3000', 10)
@@ -21,12 +24,48 @@ const server = fastify({
 registerWebhooks(server)
 
 /**
- * Initializes the Baileys WhatsApp connection.
+ * Initializes the routing system.
  * 
- * This starts the connection process in the background.
+ * Sets up routes repository, router service, and message router.
+ * 
+ * @returns The message router instance
+ */
+function initializeRouting(): MessageRouter {
+  if (DEBUG) {
+    logger.debug('[Index] Initializing routing system')
+  }
+
+  // Create routes repository (in-memory for now)
+  const routesRepository = new InMemoryRoutesRepository()
+
+  // Create router service
+  const routerService = new RouterService(routesRepository)
+
+  // Create message router
+  const messageRouter = new MessageRouter(routerService, {
+    agentClient: {
+      timeout: 30000, // 30 seconds
+    },
+  })
+
+  // TODO: Load routes from configuration file or database
+  // For now, routes can be added programmatically or via API endpoints
+
+  logger.info('[Index] Routing system initialized', {
+    routeCount: routesRepository.getRouteCount(),
+  })
+
+  return messageRouter
+}
+
+/**
+ * Initializes the Baileys WhatsApp connection with direct routing.
+ * 
+ * This starts the connection process in the background and sets up
+ * message routing to AI agents.
  * QR code will be available at /qr endpoint once generated.
  */
-async function initializeBaileysConnection(): Promise<void> {
+async function initializeBaileysConnection(messageRouter: MessageRouter): Promise<void> {
   const connection = getBaileysConnection({
     authDir: process.env.WA2AI_BAILEYS_AUTH_DIR || './auth_info_baileys',
     printQRInTerminal: DEBUG,
@@ -34,7 +73,11 @@ async function initializeBaileysConnection(): Promise<void> {
 
   try {
     await connection.connect()
-    logger.info('Baileys connection initiated', {
+    
+    // Set up direct routing
+    setupBaileysDirectRouting(messageRouter)
+
+    logger.info('Baileys connection initiated with direct routing', {
       qrEndpoint: `http://localhost:${PORT}/qr`,
     })
   } catch (error) {
@@ -61,7 +104,10 @@ server.listen({ port: PORT, host: '0.0.0.0' }, async (err, address) => {
     debugMode: DEBUG,
   })
 
-  // Initialize Baileys connection after server starts
-  await initializeBaileysConnection()
+  // Initialize routing system
+  const messageRouter = initializeRouting()
+
+  // Initialize Baileys connection with direct routing after server starts
+  await initializeBaileysConnection(messageRouter)
 })
 

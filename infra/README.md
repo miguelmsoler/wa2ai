@@ -28,8 +28,10 @@ Create a `.env` file in the project root with:
 EVOLUTION_API_KEY=your_api_key_here
 EVOLUTION_LOG_LEVEL=INFO  # Optional: ERROR, WARN, INFO, DEBUG, LOG, VERBOSE, DARK, WEBHOOKS
 
-# wa2ai Debug (optional)
-WA2AI_DEBUG=false
+# wa2ai Configuration
+WA2AI_DEBUG=false  # Optional: Enable detailed debug logging
+WA2AI_PORT=3000    # Optional: Server port (default: 3000)
+WA2AI_BAILEYS_AUTH_DIR=./auth_info_baileys  # Optional: Baileys auth directory (default: ./auth_info_baileys)
 ```
 
 **Generating a secure API key (optional for production):**
@@ -79,7 +81,10 @@ docker compose -f infra/docker-compose.lab.yml down -v
 - **wa2ai-lab** (port 3000)
   - wa2ai router service configured for lab environment
   - Health check endpoint: http://localhost:3000/health
-  - Webhook endpoint: http://localhost:3000/webhooks/whatsapp/lab
+  - Webhook endpoint: http://localhost:3000/webhooks/whatsapp/lab (for Evolution API)
+  - QR code endpoint: http://localhost:3000/qr (for Baileys direct connection)
+  - QR status endpoint: http://localhost:3000/qr/status
+  - Supports both Evolution API (webhook) and Baileys (direct) providers
 
 ### Health Checks
 
@@ -150,6 +155,44 @@ curl -X GET "http://localhost:8080/instance/connectionState/wa2ai-lab" \
 
 **Note:** Replace `default_key_change_me` with your actual API key from `.env` file.
 
+### Using Baileys Direct Connection (Alternative to Evolution API)
+
+wa2ai also supports direct WhatsApp connection via Baileys, which doesn't require Evolution API:
+
+1. **Start wa2ai service:**
+   ```bash
+   docker compose -f infra/docker-compose.lab.yml up -d wa2ai-lab
+   ```
+
+2. **Access QR code:**
+   - Open http://localhost:3000/qr in your browser
+   - The page will auto-refresh every 30 seconds
+
+3. **Scan QR code:**
+   - Open WhatsApp on your phone
+   - Go to Settings → Linked Devices → Link a Device
+   - Scan the QR code displayed in the browser
+
+4. **Verify connection:**
+   ```bash
+   curl http://localhost:3000/qr/status
+   # Should return: {"status":"connected","connected":true,...}
+   ```
+
+5. **Configure routes:**
+   - Routes can be configured via API endpoints (coming soon)
+   - Or programmatically by accessing the routes repository
+
+**Advantages of Baileys:**
+- No Evolution API dependency
+- Lower latency (direct connection, no webhook overhead)
+- Simpler architecture for single-instance deployments
+- Automatic reconnection handling
+
+**When to use each:**
+- **Evolution API**: Multi-instance deployments, centralized management, webhook-based architecture
+- **Baileys**: Single-instance deployments, direct connection, lower latency requirements
+
 ### Building wa2ai Image
 
 The wa2ai image is built automatically when starting services. To rebuild:
@@ -158,10 +201,50 @@ The wa2ai image is built automatically when starting services. To rebuild:
 docker compose -f infra/docker-compose.lab.yml build wa2ai-lab
 ```
 
+### Message Routing
+
+wa2ai routes incoming messages to AI agents based on channel ID. Routes are stored in `RoutesRepository`:
+
+**Route Structure:**
+```typescript
+{
+  channelId: '5491155551234',  // WhatsApp phone number or group ID
+  agentEndpoint: 'http://localhost:8000/agent',  // Agent HTTP endpoint
+  environment: 'lab',  // 'lab' or 'prod'
+  config?: {  // Optional configuration
+    timeout: 30000,
+    retries: 3
+  }
+}
+```
+
+**Message Flow:**
+1. Message received from WhatsApp (via Evolution API webhook or Baileys)
+2. Message normalized to `IncomingMessage` format
+3. RouterService finds route by `channelId`
+4. AgentClient sends message to `agentEndpoint` via HTTP POST
+5. Agent response is sent back to WhatsApp automatically
+
+**Current Implementation:**
+- Routes stored in-memory (`InMemoryRoutesRepository`)
+- Routes can be added programmatically
+- API endpoints for route management (coming soon)
+- Database-backed repository (coming soon)
+
 ### Troubleshooting
 
 1. **Port conflicts**: Ensure ports 3000 and 8080 are available
 2. **Permission errors**: Ensure Docker daemon is running and user has permissions
 3. **Build failures**: Check that `npm install` works locally first
 4. **Evolution API not starting**: Check logs with `docker compose -f infra/docker-compose.lab.yml logs evolution-api-lab`
+5. **Baileys connection issues**:
+   - Check QR code endpoint: http://localhost:3000/qr
+   - Verify connection status: `curl http://localhost:3000/qr/status`
+   - Check logs: `docker compose -f infra/docker-compose.lab.yml logs wa2ai-lab`
+   - Clear credentials if needed: Remove `auth_info_baileys` volume or directory
+6. **Message routing not working**:
+   - Verify route is configured for the channel ID
+   - Check agent endpoint is accessible
+   - Review logs for routing errors
+   - Ensure agent returns valid response format: `{ success: true, response: "..." }`
 
