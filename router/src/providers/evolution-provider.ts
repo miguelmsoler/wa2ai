@@ -5,7 +5,7 @@
  */
 
 import type { OutgoingMessage } from '../core/models.js'
-import type { WhatsAppProvider } from './whatsapp-provider.js'
+import type { WhatsAppProvider } from '../core/whatsapp-provider.js'
 
 /**
  * Configuration for Evolution API provider.

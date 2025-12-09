@@ -1,6 +1,6 @@
 # Simplified GANTT – Phase 1 (WhatsApp ↔ ADK Laboratory)
 
-Estimated duration: **8–11 days** working **4 hours per day** (total: **33–44 hours**). Objective: enable complete flow in laboratory → Evolution API → wa2ai → ADK Agent → WhatsApp.
+Estimated duration: **10–14 days** working **4 hours per day** (total: **41–56 hours**). Objective: enable complete flow in laboratory → WhatsApp Provider (Evolution API or Baileys) → wa2ai → ADK Agent → WhatsApp.
 
 ---
 
@@ -16,24 +16,45 @@ Estimated duration: **8–11 days** working **4 hours per day** (total: **33–4
 
 ---
 
-## 🗓️ Day 2 — Evolution API: deployment (6–8 h)
+## 🗓️ Day 2 — Evolution API: deployment (6–8 h) - PARTIALLY COMPLETED
 
-+ Choose Evolution API image/tag + minimum config (0.5 h).
-+ Add service to docker-compose and start it (1 h).
-+ Connect laboratory WhatsApp number - scan QR (1 h).
-- Send test message and validate reception (1 h).
-- Define webhook URL (0.2 h).
-- Configure webhook in Evolution API (0.5 h).
-- Validate webhook call (1–1.5 h).
++ Choose Evolution API image/tag + minimum config (0.5 h). ✅
++ Add service to docker-compose and start it (1 h). ✅
++ Connect laboratory WhatsApp number - scan QR (1 h). ✅
+- Send test message and validate reception (1 h). ⚠️ (Webhook issues encountered)
+- Define webhook URL (0.2 h). ✅
+- Configure webhook in Evolution API (0.5 h). ✅
+- Validate webhook call (1–1.5 h). ⚠️ (Webhook issues encountered)
+
+**Note:** Evolution API (Day 2) is partially completed. Baileys direct integration (Day 2A) is planned but not yet started. If Evolution API webhook issues persist, Day 2A can be implemented as an alternative.
 
 ---
 
-## 🗓️ Day 3 — wa2ai implementation: Models + Provider (4 h)
+## 🗓️ Day 2A — Baileys direct integration: Infrastructure (8–12 h)
+
+- Review Baileys library documentation (1–1.5 h).
+- Review Baileys examples and best practices (0.5–1 h).
+- Install Baileys dependencies (0.2 h).
+- Integrate QR code display/endpoint (0.5–1 h).
+- Handle connection state management (1 h).
+- Test WhatsApp connection and QR scan (0.5–1 h).
+- Implement message event handlers (1–1.5 h).
+- Integrate with webhooks-controller or direct routing (0.5–1 h).
+- Test message reception end-to-end (0.5–1 h).
+- Create/update `docker-compose.lab.yml` for Baileys mode (0.5 h).
+- Update environment variables for provider selection (0.2 h).
+
+**Note:** The `BaileysProvider` class implementation itself is done in Day 3 (Section 3.2). Day 2A focuses on Baileys infrastructure setup and integration.
+
+---
+
+## 🗓️ Day 3 — wa2ai implementation: Models + Provider (5.5–7 h)
 
 - Define models: `IncomingMessage`, `OutgoingMessage`, `Route` (1.5 h).
 - Implement `WhatsAppProvider` interface (0.5 h).
-- Implement `EvolutionProvider` with basic sending (1.5–2 h).
-- Test message sending from wa2ai → Evolution → WhatsApp.
+- Implement `EvolutionProvider` class implementing `WhatsAppProvider` interface (1.5–2 h).
+- Implement `BaileysProvider` class implementing `WhatsAppProvider` interface (2–3 h).
+- Test message sending from wa2ai → Provider → WhatsApp.
 
 ---
 
@@ -103,25 +124,27 @@ Estimated duration: **8–11 days** working **4 hours per day** (total: **33–4
 ## 📊 Visual summary
 
 ```
-Day 1 | ████ Environment prep (4-6h)
-Day 2 | ████ Evolution API (6-8h)
-Day 3 | ████ Models + Provider (4h)
-Day 4 | ████ Routing core (4h)
-Day 5 | ████ Controller + Config (4-5h)
-Day 6 | ████ ADK integration (3-4h)
-Day 7 | ████ E2E integration (4-6h)
-Day 8 | ████ Observability (2-3h)
-Day 9 | ████ Documentation (2-3h)
-Day 10| █ Phase 1 closure (0.5h)
+Day 1  | ████ Environment prep (4-6h)
+Day 2  | ████ Evolution API infrastructure (6-8h) - PARTIALLY COMPLETED
+Day 2A | ████████ Baileys infrastructure (8-12h)
+Day 3  | ██████ Models + Providers (5.5-7h)
+Day 4  | ████ Routing core (4h)
+Day 5  | ████ Controller + Config (4-5h)
+Day 6  | ████ ADK integration (3-4h)
+Day 7  | ████ E2E integration (4-6h)
+Day 8  | ████ Observability (2-3h)
+Day 9  | ████ Documentation (2-3h)
+Day 10 | █ Phase 1 closure (0.5h)
 ```
 
-**Total: 33–44 hours** (8–11 days at 4h/day)
+**Total: 41–56 hours** (10–14 days at 4h/day)
+**Note:** Evolution API (Day 2) is partially completed. Baileys (Day 2A) infrastructure is planned but not yet started. If Evolution API webhook issues persist, Day 2A can be implemented as an alternative.
 
 ---
 
 ## 🎯 Expected result at the end of Phase 1
 
 - Real messages from WhatsApp are correctly routed to the ADK agent.
-- The agent responds and messages return to the user via Evolution API.
-- wa2ai implemented with support for future official provider (Cloud API).
+- The agent responds and messages return to the user via WhatsApp provider (Evolution API or Baileys).
+- wa2ai implemented with both Evolution API and Baileys providers, plus support for future official provider (Cloud API).
 - Sufficient documentation to reproduce or continue development.

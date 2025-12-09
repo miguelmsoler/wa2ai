@@ -1,6 +1,6 @@
 # Phase 1 – Task breakdown (WhatsApp ↔ ADK Laboratory) with estimates
 
-Objective: make the laboratory environment operational where real WhatsApp messages pass through Evolution API → wa2ai → Existing ADK Agent → WhatsApp.
+Objective: make the laboratory environment operational where real WhatsApp messages pass through a WhatsApp provider (Evolution API or Baileys) → wa2ai → Existing ADK Agent → WhatsApp.
 Each section and each task includes description and **man-hour estimate** considering that you're doing the development using **vibe-coding with Cursor**.
 
 ---
@@ -28,6 +28,8 @@ Ensures the technical environment is ready before implementing wa2ai logic.
 Evolution API is deployed and configured to receive WhatsApp messages.
 **Total estimate:** 6–8 h
 
+**Note:** Both Evolution API (Section 2) and Baileys direct integration (Section 2A) can be implemented. They are not mutually exclusive and provide different provider options for wa2ai.
+
 ### 2.1. Start Evolution API
 - **Choose image/tag + minimum config (0.5 h)** — Token, ports.
 - **Add service to docker-compose and start it (1 h)** — Validate health.
@@ -43,6 +45,37 @@ Evolution API is deployed and configured to receive WhatsApp messages.
 
 ---
 
+## 2A. Baileys direct integration (Lab)
+Direct integration with WhatsApp using Baileys library, bypassing Evolution API.
+**Total estimate:** 8–12 h
+
+**Note:** Both Evolution API (Section 2) and Baileys direct integration (Section 2A) can be implemented. They are not mutually exclusive and provide different provider options for wa2ai.
+
+### 2A.1. Baileys documentation review
+- **Review Baileys library documentation (1–1.5 h)** — Understand API, connection flow, message handling.
+- **Review Baileys examples and best practices (0.5–1 h)** — Connection management, QR generation, message sending.
+
+### 2A.2. BaileysProvider implementation
+- **Install Baileys dependencies (0.2 h)** — Add `@whiskeysockets/baileys` package.
+- **Implement `BaileysProvider` class (2–3 h)** — Connection management, QR code generation, message receiving.
+- **Implement message sending via Baileys (1–1.5 h)** — Send text, media, handle errors.
+
+### 2A.3. QR code generation and connection
+- **Integrate QR code display/endpoint (0.5–1 h)** — Expose QR for scanning.
+- **Handle connection state management (1 h)** — Connect, disconnect, reconnect logic.
+- **Test WhatsApp connection and QR scan (0.5–1 h)** — Validate connection flow.
+
+### 2A.4. Message reception and webhook integration
+- **Implement message event handlers (1–1.5 h)** — Listen to incoming messages.
+- **Integrate with webhooks-controller or direct routing (0.5–1 h)** — Connect Baileys events to router.
+- **Test message reception end-to-end (0.5–1 h)** — Validate complete flow.
+
+### 2A.5. Update docker-compose for Baileys option
+- **Create/update `docker-compose.lab.yml` for Baileys mode (0.5 h)** — Remove Evolution API dependencies.
+- **Update environment variables (0.2 h)** — Provider selection (Evolution vs Baileys).
+
+---
+
 ## 3. wa2ai implementation (Lab)
 It's the central piece: receives messages, interprets them, calls the agent and responds.
 **Total estimate:** 12–16 h
@@ -54,7 +87,8 @@ It's the central piece: receives messages, interprets them, calls the agent and 
 
 ### 3.2. WhatsApp provider interface
 - **Define `WhatsAppProvider` interface (0.5 h)** — Common contract.
-- **Implement `EvolutionProvider` (1.5–2 h)** — HTTP calls + errors.
+- **Implement `EvolutionProvider` (1.5–2 h)** — HTTP calls + errors. (Section 2)
+- **Implement `BaileysProvider` (2–3 h)** — Direct Baileys integration. (Section 2A)
 
 ### 3.3. Routing service
 - **Implement `RoutesRepository` (0.5–1 h)** — JSON or in-memory.
@@ -144,5 +178,7 @@ Confirm:
 ---
 
 ## 🧮 Phase 1 total estimate
-**≈ 33 – 44 man-hours** 
+**≈ 41 – 56 man-hours** (implementing both providers - Sections 2 + 2A)
+
 Depending on pace, interruptions and fluency with vibe-coding.
+**Note:** Both Evolution API (Section 2) and Baileys direct integration (Section 2A) are implemented. If Evolution API webhook synchronization issues are encountered, Section 2 can be left partially completed while Section 2A provides a working alternative.

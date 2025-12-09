@@ -16,12 +16,13 @@ Enable development, testing, and deployment of AI agents connected to WhatsApp t
 ## 2. Main Components
 ### 2.1 WhatsApp Provider
 Layer that abstracts interaction with WhatsApp.
-- **Lab:** Evolution API (unofficial, Baileys).
+- **Lab:** Evolution API (unofficial, Baileys) or Baileys directly.
 - **Prod:** WhatsApp Cloud API (official) or Evolution API configured as a facade.
 
-There are two provider implementations:
-- `EvolutionProvider`
-- `CloudApiProvider`
+There are three provider implementations:
+- `EvolutionProvider` - Uses Evolution API as intermediary (lab)
+- `BaileysProvider` - Uses Baileys library directly (lab, no Evolution API dependency)
+- `CloudApiProvider` - Uses official WhatsApp Cloud API (prod)
 
 ### 2.2 Router
 Node.js/TypeScript service that:
@@ -37,13 +38,15 @@ Independent services (Python/ADK), exposed via HTTP, that receive messages and r
 
 ## 3. Phase 1 – Laboratory
 ### 3.1 Services to deploy
+
+**Option A: Using Evolution API (original approach)**
 1. **postgres**
    - PostgreSQL 16 database container.
    - Stores Evolution API data (instances, messages, contacts, chats, etc.).
-   - Required by Evolution API v2.1.1.
+   - Required by Evolution API v2.3.7.
 
 2. **evolution-api-lab**
-   - Docker container (Evolution API v2.1.1).
+   - Docker container (Evolution API v2.3.7).
    - Connected to PostgreSQL database.
    - Associated with a test WhatsApp number.
 
@@ -54,19 +57,43 @@ Independent services (Python/ADK), exposed via HTTP, that receive messages and r
 4. **ADK Agents (lab)**
    - Independent deployment.
 
+**Option B: Using Baileys directly (alternative approach)**
+1. **wa2ai-lab**
+   - Docker container or Cloud Run.
+   - Configured to use `BaileysProvider`.
+   - Directly manages WhatsApp connection using Baileys library.
+   - No Evolution API or PostgreSQL dependency.
+
+2. **ADK Agents (lab)**
+   - Independent deployment.
+
 ### 3.2 Flow
+
+**Option A: Using Evolution API**
 1. User sends message to lab number.
 2. Evolution API → webhook → wa2ai (lab).
 3. wa2ai determines agent.
 4. wa2ai sends response via Evolution API.
 
+**Option B: Using Baileys directly**
+1. User sends message to lab number.
+2. Baileys (within wa2ai) receives message directly.
+3. wa2ai determines agent.
+4. wa2ai sends response via Baileys directly.
+
 ### 3.3 Infrastructure
+
+**Option A: Using Evolution API**
 Suggested file `docker-compose.lab.yml` with:
 - postgres (PostgreSQL database)
 - evolution-api-lab
 - wa2ai-lab
 
-The router only uses `lab` provider, but already includes the interface for future `prod`.
+**Option B: Using Baileys directly**
+Suggested file `docker-compose.lab.yml` with:
+- wa2ai-lab (no Evolution API or PostgreSQL needed)
+
+The router can use either `EvolutionProvider` or `BaileysProvider` for lab environment, and already includes the interface for future `prod` (`CloudApiProvider`).
 
 ---
 
@@ -144,6 +171,7 @@ wa2ai/
       webhooks-controller.ts
       providers/
         evolution-provider.ts
+        baileys-provider.ts
         cloud-provider.ts
       core/
         router-service.ts

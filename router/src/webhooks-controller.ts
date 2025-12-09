@@ -1,61 +1,43 @@
 /**
  * Webhooks controller - HTTP entry points for incoming webhooks.
  * 
- * This module handles HTTP requests from WhatsApp providers and
- * coordinates the routing flow.
+ * This module handles HTTP requests from WhatsApp providers.
+ * It only handles HTTP concerns (parsing request, sending response).
+ * Business logic is delegated to domain services.
  */
 
 import type { FastifyInstance } from 'fastify'
+import { logger } from './core/logger.js'
+import { normalizeEvolutionApiWebhook } from './core/webhook-adapter.js'
 
 /**
- * Gets the DEBUG flag from environment variable.
- * Should be checked at runtime, not at module load time.
- */
-function isDebugMode(): boolean {
-  return process.env.WA2AI_DEBUG === 'true'
-}
-
-/**
- * Registers webhook endpoints on the FastAPI instance.
+ * Registers webhook endpoints on the Fastify instance.
  * 
  * @param app - Fastify application instance
  */
 export function registerWebhooks(app: FastifyInstance): void {
   app.post('/webhooks/whatsapp/lab', async (request, reply) => {
-    const body = request.body as any
+    const body = request.body as unknown
     
-    // Always log webhook events for validation
-    // Evolution API sends webhooks in format: { event: "messages.upsert", instance: "...", data: {...} }
-    const eventType = body?.event || (body?.event?.event)
-    const instance = body?.instance || body?.event?.instance
-    const data = body?.data || body?.event?.data
+    // Log incoming webhook
+    logger.debug('[WebhookController] Received webhook', {
+      body,
+    })
     
-    if (eventType) {
-      console.log(`[Webhook] Received event: ${eventType} from instance: ${instance || 'unknown'}`)
+    // Delegate normalization to domain adapter
+    const normalizedMessage = normalizeEvolutionApiWebhook(body)
+    
+    if (normalizedMessage) {
+      // TODO: Route message to appropriate agent via RouterService
+      // This will be implemented in Phase 1
+      // const route = await routerService.routeMessage(normalizedMessage)
+      // await processMessage(normalizedMessage, route)
       
-      // Log message details if it's a messages.upsert event
-      // Evolution API sends data as a single message object (messageRaw), not an array
-      if (eventType === 'messages.upsert' && data) {
-        // data is the message object directly (from prepareMessage)
-        const msg = data
-        const from = msg.key?.remoteJid || msg.from || 'unknown'
-        const messageText = msg.message?.conversation || 
-                          msg.message?.extendedTextMessage?.text ||
-                          msg.message?.imageMessage?.caption ||
-                          '[media or unsupported message type]'
-        console.log(`[Webhook] Message received from ${from}: ${messageText}`)
-      }
-      
-      // In debug mode, log full payload
-      if (isDebugMode()) {
-        console.log('[Webhook] Full payload:', JSON.stringify(body, null, 2))
-      }
-    } else {
-      console.log('[Webhook] Received webhook with unknown format:', body)
+      logger.info('[WebhookController] Message processed', {
+        messageId: normalizedMessage.id,
+        channelId: normalizedMessage.channelId,
+      })
     }
-    
-    // TODO: Parse and route message to appropriate agent
-    // This will be implemented in Phase 1
     
     reply.code(200).send({ status: 'ok', received: true })
   })
