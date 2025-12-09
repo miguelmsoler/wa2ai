@@ -28,10 +28,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "fastify": "^4.26.0"
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "fastify": "^4.26.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@types/qrcode": "^1.5.6",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "eslint": "^8.56.0",
@@ -44,4 +47,3 @@
     "node": ">=18.0.0"
   }
 }
-

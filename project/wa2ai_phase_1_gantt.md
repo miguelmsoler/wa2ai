@@ -32,8 +32,8 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 
 ## 🗓️ Day 2A — Baileys direct integration: Infrastructure (8–12 h)
 
-- Review Baileys library documentation (1–1.5 h).
-- Review Baileys examples and best practices (0.5–1 h).
++ Review Baileys library documentation (1–1.5 h).
++ Review Baileys examples and best practices (0.5–1 h).
 - Install Baileys dependencies (0.2 h).
 - Integrate QR code display/endpoint (0.5–1 h).
 - Handle connection state management (1 h).
