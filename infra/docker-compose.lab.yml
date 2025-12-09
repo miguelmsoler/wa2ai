@@ -18,7 +18,7 @@ services:
       retries: 5
 
   evolution-api-lab:
-    image: evoapicloud/evolution-api:v2.3.6
+    image: evoapicloud/evolution-api:v2.3.7
     container_name: evolution-api-lab
     ports:
       - "8080:8080"
@@ -50,20 +50,25 @@ services:
       # Session configuration
       - CONFIG_SESSION_PHONE_CLIENT=Chrome
       - CONFIG_SESSION_PHONE_NAME=wa2ai-lab
-      - BAILEYS_VERSION=2.3000.1015901307
+      # BAILEYS_VERSION is auto-detected in v2.3.7, no need to specify
       # QR Code configuration
       - QRCODE_COLOR=#175197
       - QRCODE_LIMIT=30
       # Webhook configuration
       - WEBHOOK_GLOBAL_ENABLED=true
       - WEBHOOK_GLOBAL_URL=http://wa2ai-lab:3000/webhooks/whatsapp/lab
+      - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false
+      # Enable specific webhook events
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+      - WEBHOOK_EVENTS_CONNECTION_UPDATE=true
+      - WEBHOOK_EVENTS_QRCODE_UPDATED=true
     volumes:
       - evolution_data:/evolution/.store
     networks:
       - wa2ai-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -88,7 +93,7 @@ services:
       postgres:
         condition: service_healthy
       evolution-api-lab:
-        condition: service_healthy
+        condition: service_started
     networks:
       - wa2ai-network
     restart: unless-stopped
