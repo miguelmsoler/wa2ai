@@ -54,7 +54,7 @@ export function registerRouteEndpoints(
       reply.code(201).send({
         success: true,
         message: 'Route added successfully',
-        route: request.body,
+        data: request.body,
       })
     } catch (error) {
       logger.error('[RoutesController] Failed to add route', {
@@ -86,7 +86,7 @@ export function registerRouteEndpoints(
 
       reply.code(200).send({
         success: true,
-        routes,
+        data: routes,
         count: routes.length,
       })
     } catch (error) {
@@ -124,12 +124,96 @@ export function registerRouteEndpoints(
 
       reply.code(200).send({
         success: true,
-        route,
+        data: route,
       })
     } catch (error) {
       logger.error('[RoutesController] Failed to get route', {
         error: error instanceof Error ? error.message : String(error),
         channelId,
+      })
+
+      reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  })
+
+  /**
+   * PUT /api/routes/:channelId - Update an existing route.
+   * 
+   * Body: { channelId?, agentEndpoint, environment, regexFilter?, config? }
+   * If channelId is provided in body, it will change the route's channelId (effectively moving it)
+   */
+  app.put<{ Params: { channelId: string }; Body: Route }>('/api/routes/:channelId', async (request, reply) => {
+    const { channelId: oldChannelId } = request.params
+    const newChannelId = request.body.channelId || oldChannelId
+
+    if (isDebugMode()) {
+      logger.debug('[RoutesController] Updating route', {
+        oldChannelId,
+        newChannelId,
+        agentEndpoint: request.body.agentEndpoint,
+      })
+    }
+
+    try {
+      // Check if route exists
+      const existingRoute = await routesRepository.findByChannelId(oldChannelId)
+      if (!existingRoute) {
+        // If route doesn't exist, create it (upsert behavior)
+        const newRoute: Route = {
+          channelId: newChannelId,
+          agentEndpoint: request.body.agentEndpoint,
+          environment: request.body.environment,
+          regexFilter: request.body.regexFilter,
+          config: request.body.config,
+        }
+        await routesRepository.addRoute(newRoute)
+
+        logger.info('[RoutesController] Route created via PUT (upsert)', {
+          channelId: newChannelId,
+          agentEndpoint: newRoute.agentEndpoint,
+        })
+
+        reply.code(201).send({
+          success: true,
+          message: 'Route created successfully',
+          data: newRoute,
+        })
+        return
+      }
+
+      // Create updated route
+      const updatedRoute: Route = {
+        channelId: newChannelId,
+        agentEndpoint: request.body.agentEndpoint,
+        environment: request.body.environment,
+        regexFilter: request.body.regexFilter,
+        config: request.body.config,
+      }
+
+      // Remove old route and add updated one (even if channelId changed)
+      await routesRepository.removeRoute(oldChannelId)
+      await routesRepository.addRoute(updatedRoute)
+
+      logger.info('[RoutesController] Route updated via API', {
+        oldChannelId,
+        newChannelId,
+        agentEndpoint: updatedRoute.agentEndpoint,
+        environment: updatedRoute.environment,
+        hasRegexFilter: !!updatedRoute.regexFilter,
+      })
+
+      reply.code(200).send({
+        success: true,
+        message: 'Route updated successfully',
+        data: updatedRoute,
+      })
+    } catch (error) {
+      logger.error('[RoutesController] Failed to update route', {
+        error: error instanceof Error ? error.message : String(error),
+        oldChannelId,
       })
 
       reply.code(500).send({
@@ -162,10 +246,7 @@ export function registerRouteEndpoints(
 
       logger.info('[RoutesController] Route removed via API', { channelId })
 
-      reply.code(200).send({
-        success: true,
-        message: 'Route removed successfully',
-      })
+      reply.code(204).send()
     } catch (error) {
       logger.error('[RoutesController] Failed to remove route', {
         error: error instanceof Error ? error.message : String(error),

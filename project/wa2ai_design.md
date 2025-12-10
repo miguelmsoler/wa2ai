@@ -172,6 +172,24 @@ Agents move from lab → prod by updating routes only:
 - Maintainability
 - Provider interchangeability
 
+### 5.4 RESTful API Standards
+
+**Decision**: Follow RESTful API best practices.
+
+**Rationale**:
+- Consistency across all API endpoints
+- Industry-standard patterns for better developer experience
+- Easier integration and maintenance
+
+**Implementation**:
+- All HTTP endpoints follow RESTful conventions (nouns for resources, standard HTTP methods)
+- Consistent error responses with appropriate status codes
+- JSON format for all request/response bodies
+- Versioning via URL path (`/api/v1/...`)
+- **First, consult the `refs/` directory** for RESTful API specification documents (contents vary by developer and environment)
+
+**Note**: The `refs/` directory is the first source to consult for any documentation needs. It contains documents compiled by developers as the project progresses and is not versioned (local use only). The contents vary by developer and environment.
+
 ---
 
 ## 6. Core Components
@@ -253,4 +271,27 @@ wa2ai/
 
 ---
 
-**Note**: For detailed technical documentation, see `docs/phase1-lab.md` and `docs/phase2-prod.md`.
+## 10. Documentation Sources
+
+### 10.1 Primary Documentation Source: `refs/` Directory
+
+**The `refs/` directory is the first source to consult for any documentation needs.**
+
+- Contains documents compiled by developers as the project progresses
+- Includes reference implementations, patterns, and specifications
+- **Not versioned** (in `.gitignore`) - for local use only
+- **Contents vary by developer and environment** - each developer can add their own documents and symlinks
+- Do not assume specific files exist in `refs/` - check what's available in your local environment
+
+### 10.2 Project Documentation
+
+For detailed technical documentation, see:
+- `refs/` directory - First source for any documentation needs (RESTful API specs, library references, etc.)
+- `docs/phase1-lab.md` - Phase 1 technical documentation (laboratory mode with Evolution API)
+- `docs/phase2-prod.md` - Phase 2 technical documentation (production mode with WhatsApp Cloud API)
+- `project/wa2ai_design.md` - Overall architecture and design decisions (this document)
+- `AGENTS.md` - Development guidelines and conventions
+
+---
+
+**Note**: Always consult `refs/` directory first for documentation, then refer to project-specific documentation in `docs/` and `project/`.

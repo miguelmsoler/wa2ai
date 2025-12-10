@@ -43,6 +43,11 @@ describe('RoutesController', () => {
           ;(mockApp as any).getRouteHandler = handler
         }
       }),
+      put: vi.fn((route: string, handler: any) => {
+        if (route === '/api/routes/:channelId') {
+          ;(mockApp as any).putRouteHandler = handler
+        }
+      }),
       delete: vi.fn((route: string, handler: any) => {
         if (route === '/api/routes/:channelId') {
           ;(mockApp as any).deleteRouteHandler = handler
@@ -77,7 +82,7 @@ describe('RoutesController', () => {
         expect.objectContaining({
           success: true,
           message: 'Route added successfully',
-          route: routeBody,
+          data: routeBody,
         })
       )
 
@@ -114,7 +119,7 @@ describe('RoutesController', () => {
       expect(mockReply.send).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          routes: [],
+          data: [],
           count: 0,
         })
       )
@@ -138,7 +143,7 @@ describe('RoutesController', () => {
       expect(mockReply.code).toHaveBeenCalledWith(200)
       const response = (mockReply.send as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(response.success).toBe(true)
-      expect(response.routes).toHaveLength(2)
+      expect(response.data).toHaveLength(2)
       expect(response.count).toBe(2)
     })
   })
@@ -161,7 +166,7 @@ describe('RoutesController', () => {
       expect(mockReply.send).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          route,
+          data: route,
         })
       )
     })
@@ -182,6 +187,95 @@ describe('RoutesController', () => {
     })
   })
 
+  describe('PUT /api/routes/:channelId', () => {
+    it('should update existing route', async () => {
+      const existingRoute = {
+        channelId: '5491155551234',
+        agentEndpoint: 'http://localhost:8000/agent',
+        environment: 'lab' as const,
+      }
+      await mockRoutesRepository.addRoute(existingRoute)
+
+      const updatedRoute = {
+        channelId: '5491155551234',
+        agentEndpoint: 'http://localhost:9000/agent',
+        environment: 'prod' as const,
+      }
+
+      mockRequest.params = { channelId: '5491155551234' }
+      mockRequest.body = updatedRoute
+
+      const handler = (mockApp as any).putRouteHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Route updated successfully',
+          data: updatedRoute,
+        })
+      )
+
+      // Verify route was actually updated
+      const route = await mockRoutesRepository.findByChannelId('5491155551234')
+      expect(route?.agentEndpoint).toBe('http://localhost:9000/agent')
+      expect(route?.environment).toBe('prod')
+    })
+
+    it('should create route if not exists (upsert)', async () => {
+      const newRoute = {
+        channelId: '5491155551234',
+        agentEndpoint: 'http://localhost:8000/agent',
+        environment: 'lab' as const,
+      }
+
+      mockRequest.params = { channelId: '5491155551234' }
+      mockRequest.body = newRoute
+
+      const handler = (mockApp as any).putRouteHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(201)
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Route created successfully',
+          data: newRoute,
+        })
+      )
+    })
+
+    it('should change channelId when provided in body', async () => {
+      const existingRoute = {
+        channelId: 'old-channel',
+        agentEndpoint: 'http://localhost:8000/agent',
+        environment: 'lab' as const,
+      }
+      await mockRoutesRepository.addRoute(existingRoute)
+
+      const updatedRoute = {
+        channelId: 'new-channel',
+        agentEndpoint: 'http://localhost:8000/agent',
+        environment: 'lab' as const,
+      }
+
+      mockRequest.params = { channelId: 'old-channel' }
+      mockRequest.body = updatedRoute
+
+      const handler = (mockApp as any).putRouteHandler
+      await handler(mockRequest, mockReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(200)
+      
+      // Verify old route is gone and new one exists
+      const oldRoute = await mockRoutesRepository.findByChannelId('old-channel')
+      const newRoute = await mockRoutesRepository.findByChannelId('new-channel')
+      expect(oldRoute).toBeNull()
+      expect(newRoute).toEqual(updatedRoute)
+    })
+  })
+
   describe('DELETE /api/routes/:channelId', () => {
     it('should remove route when found', async () => {
       const route = {
@@ -196,13 +290,8 @@ describe('RoutesController', () => {
       const handler = (mockApp as any).deleteRouteHandler
       await handler(mockRequest, mockReply)
 
-      expect(mockReply.code).toHaveBeenCalledWith(200)
-      expect(mockReply.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: true,
-          message: 'Route removed successfully',
-        })
-      )
+      expect(mockReply.code).toHaveBeenCalledWith(204)
+      expect(mockReply.send).toHaveBeenCalledWith()
 
       // Verify route was actually removed
       const found = await mockRoutesRepository.findByChannelId('5491155551234')

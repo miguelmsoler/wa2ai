@@ -145,8 +145,8 @@ wa2ai/
 │   ├── phase1-lab.md        # Phase 1 technical documentation
 │   └── phase2-prod.md       # Phase 2 technical documentation
 │
-├── refs/                    # Symbolic links to external projects and resources (not versioned, local use only)
-│   └── (symlinks to agents, libraries, documentation)
+├── refs/                    # Documentation and reference materials (not versioned, local use only)
+│   └── (symlinks and documents added by each developer - contents vary by environment)
 │
 ├── .env                     # Backend environment variables (not in git)
 ├── .env.example             # Example backend environment variables
@@ -428,10 +428,15 @@ Guidelines:
 
 ## Domain docs
 
+**First source to consult: `refs/` directory**
+
+The `refs/` directory is the first source to consult for any documentation needs. It contains documents compiled by developers as the project progresses and is not versioned (local use only). The contents vary by developer and environment.
+
 Before modifying routing logic or provider implementations, check:
-- `docs/phase1-lab.md` – Phase 1 technical documentation (laboratory mode with Evolution API).
-- `docs/phase2-prod.md` – Phase 2 technical documentation (production mode with WhatsApp Cloud API).
-- `project/wa2ai_design.md` – Overall architecture and design decisions.
+- `refs/` directory – First source for any documentation (RESTful API specs, library references, code examples, etc.)
+- `docs/phase1-lab.md` – Phase 1 technical documentation (laboratory mode with Evolution API)
+- `docs/phase2-prod.md` – Phase 2 technical documentation (production mode with WhatsApp Cloud API)
+- `project/wa2ai_design.md` – Overall architecture and design decisions
 
 Update these documents when you introduce changes that affect their behavior.
 
@@ -497,15 +502,29 @@ When AI agents are used for development assistance:
    - Never create temporary files in the project root or any project directory.
 
 8. **Using the `refs/` directory**
-   - The `refs/` directory contains symbolic links to external projects, agents, libraries, and documentation that can help with implementation.
-   - These symlinks provide access to reference implementations, related projects, or useful resources without duplicating code.
+   - **The `refs/` directory is the first source to consult for any documentation needs.**
+   - This directory contains symbolic links to external projects, agents, libraries, and documentation that can help with implementation.
+   - It also contains documents compiled by developers as the project progresses.
+   - These symlinks and documents provide access to reference implementations, related projects, or useful resources without duplicating code.
    - When implementing features, check `refs/` for relevant examples or patterns from related projects.
-   - The `refs/` directory is **not versioned** (it's in `.gitignore`) and is for local use only. Each developer can add their own symlinks to help agents with implementation.
+   - The `refs/` directory is **not versioned** (it's in `.gitignore`) and is for local use only. Each developer can add their own symlinks and documents to help agents with implementation.
+   - **Do not assume specific files exist in `refs/`** - the contents vary by developer and environment.
 
-9. **Git operations**
-   - **Never make commits without explicit user request.** Only commit when the user explicitly asks for it.
-   - Do not push to remote repositories unless explicitly requested.
-   - Do not modify git configuration.
+9. **API Standards**
+   - All HTTP API endpoints must follow RESTful API best practices.
+   - **First, consult the `refs/` directory** for RESTful API specification documents (e.g., `refs/restful.md` if available in your local environment).
+   - These specifications define standards for:
+     - URL structure and naming conventions
+     - HTTP methods (GET, POST, PUT, DELETE, PATCH)
+     - Status codes and error responses
+     - Request/response formats
+     - Versioning, pagination, filtering
+   - When implementing new API endpoints, consult `refs/` first for RESTful API documentation to ensure consistency with project standards.
+
+10. **Git operations**
+    - **Never make commits without explicit user request.** Only commit when the user explicitly asks for it.
+    - Do not push to remote repositories unless explicitly requested.
+    - Do not modify git configuration.
 
 This AGENTS.md is the source of truth for agents about how to build, test, and extend the project.
 
