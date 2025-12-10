@@ -5,7 +5,7 @@
  * WhatsApp Cloud API. This will be implemented in Phase 2.
  */
 
-import type { OutgoingMessage } from '../core/models.js'
+import type { IncomingMessage, OutgoingMessage } from '../core/models.js'
 import type { WhatsAppProvider } from '../core/whatsapp-provider.js'
 
 /**
@@ -38,6 +38,18 @@ export class CloudApiProvider implements WhatsAppProvider {
     // TODO: Implement WhatsApp Cloud API HTTP client
     // This will be implemented in Phase 2
     throw new Error('CloudApiProvider.sendMessage not yet implemented')
+  }
+
+  /**
+   * Normalizes WhatsApp Cloud API webhook payload to domain IncomingMessage.
+   * 
+   * @param _payload - Raw webhook payload from WhatsApp Cloud API
+   * @returns Normalized IncomingMessage or null if payload is invalid
+   */
+  normalizeWebhook(_payload: unknown): IncomingMessage | null {
+    // TODO: Implement WhatsApp Cloud API webhook normalization
+    // This will be implemented in Phase 2
+    return null
   }
 }
 

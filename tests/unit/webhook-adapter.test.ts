@@ -1,13 +1,15 @@
 /**
- * Unit tests for webhook adapter.
+ * Unit tests for Evolution API webhook normalization.
  * 
- * Tests the normalization logic for Evolution API webhook payloads.
+ * Tests the normalization logic for Evolution API webhook payloads
+ * via EvolutionProvider.normalizeWebhook.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { normalizeEvolutionApiWebhook } from '../../router/src/core/webhook-adapter.js'
+import { EvolutionProvider } from '../../router/src/providers/evolution-provider.js'
 
-describe('WebhookAdapter', () => {
+describe('EvolutionProvider.normalizeWebhook', () => {
+  let provider: EvolutionProvider
   let consoleLogSpy: ReturnType<typeof vi.spyOn>
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>
 
@@ -15,6 +17,13 @@ describe('WebhookAdapter', () => {
     // Mock console.log and console.warn
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {}) as any
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {}) as any
+    
+    // Create EvolutionProvider instance
+    provider = new EvolutionProvider({
+      apiUrl: 'http://test-evolution-api:8080',
+      apiKey: 'test-key',
+      instanceName: 'wa2ai-test',
+    })
   })
 
   afterEach(() => {
@@ -23,7 +32,7 @@ describe('WebhookAdapter', () => {
     vi.clearAllMocks()
   })
 
-  describe('normalizeEvolutionApiWebhook', () => {
+  describe('normalizeWebhook', () => {
     it('should normalize messages.upsert event with conversation message', () => {
       const payload = {
         event: 'messages.upsert',
@@ -41,7 +50,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.id).toBe('test123')
@@ -72,7 +81,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.text).toBe('This is an extended text message')
@@ -97,7 +106,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.text).toBe('This is an image caption')
@@ -120,7 +129,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.text).toBe('[media or unsupported message type]')
@@ -143,7 +152,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.channelId).toBe('120363123456789012@g.us')
@@ -162,7 +171,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.from).toBe('5493777239922@s.whatsapp.net')
@@ -185,7 +194,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.id).toMatch(/^msg-\d+$/)
@@ -208,7 +217,7 @@ describe('WebhookAdapter', () => {
       }
 
       const before = new Date()
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
       const after = new Date()
 
       expect(result).not.toBeNull()
@@ -226,7 +235,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).toBeNull()
     })
@@ -238,7 +247,7 @@ describe('WebhookAdapter', () => {
         // data is missing
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).toBeNull()
     })
@@ -253,7 +262,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).toBeNull()
     })
@@ -263,7 +272,7 @@ describe('WebhookAdapter', () => {
         unknownField: 'unknown value',
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).toBeNull()
     })
@@ -286,7 +295,7 @@ describe('WebhookAdapter', () => {
         },
       }
 
-      const result = normalizeEvolutionApiWebhook(payload)
+      const result = provider.normalizeWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.metadata?.rawMessage).toEqual(payload.data.message)

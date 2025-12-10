@@ -7,18 +7,20 @@ import { MessageRouter } from '../../router/src/core/message-router.js'
 import { RouterService } from '../../router/src/core/router-service.js'
 import type { RoutesRepository } from '../../router/src/core/router-service.js'
 import type { IncomingMessage, Route } from '../../router/src/core/models.js'
-import type { AgentResponse } from '../../router/src/core/agent-client.js'
+import type { AgentResponse, AgentClient } from '../../router/src/core/agent-client.js'
+import type { WhatsAppProvider } from '../../router/src/core/whatsapp-provider.js'
 
 describe('MessageRouter', () => {
   let mockRepository: RoutesRepository
   let routerService: RouterService
   let messageRouter: MessageRouter
-  let mockAgentClient: { sendMessage: ReturnType<typeof vi.fn> }
+  let mockAgentClient: AgentClient
+  let mockWhatsAppProvider: WhatsAppProvider
 
   const mockMessage: IncomingMessage = {
     id: 'MSG001',
-    from: '5491155551234@s.whatsapp.net',
-    channelId: '5491155551234',
+    from: 'test-user-123@s.whatsapp.net',
+    channelId: 'test-channel-123',
     text: 'Hello',
     timestamp: new Date(),
   }
@@ -32,13 +34,25 @@ describe('MessageRouter', () => {
     routerService = new RouterService(mockRepository)
     
     // Create a mock agent client
+    const sendMessageMock = vi.fn()
     mockAgentClient = {
-      sendMessage: vi.fn(),
+      sendMessage: sendMessageMock,
+    } as AgentClient
+    
+    // Create a mock WhatsApp provider
+    mockWhatsAppProvider = {
+      sendMessage: vi.fn().mockResolvedValue(undefined),
+      normalizeWebhook: vi.fn().mockReturnValue(null),
     }
     
-    // Create message router and replace its agent client with mock
-    messageRouter = new MessageRouter(routerService)
-    ;(messageRouter as any).agentClient = mockAgentClient
+    // Create message router with mocked dependencies
+    messageRouter = new MessageRouter(
+      routerService,
+      mockAgentClient,
+      {
+        whatsappProvider: mockWhatsAppProvider,
+      }
+    )
   })
 
   describe('routeMessage', () => {
@@ -54,7 +68,7 @@ describe('MessageRouter', () => {
 
     it('should send message to agent when route is found', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
@@ -65,7 +79,7 @@ describe('MessageRouter', () => {
       }
 
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      mockAgentClient.sendMessage.mockResolvedValue(agentResponse)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValue(agentResponse)
 
       const result = await messageRouter.routeMessage(mockMessage)
 
@@ -79,7 +93,7 @@ describe('MessageRouter', () => {
 
     it('should return error when agent returns failure', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
@@ -90,7 +104,7 @@ describe('MessageRouter', () => {
       }
 
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      mockAgentClient.sendMessage.mockResolvedValue(agentResponse)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValue(agentResponse)
 
       const result = await messageRouter.routeMessage(mockMessage)
 
@@ -100,13 +114,13 @@ describe('MessageRouter', () => {
 
     it('should handle agent client errors', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
 
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      mockAgentClient.sendMessage.mockRejectedValue(new Error('Network error'))
+      vi.mocked(mockAgentClient.sendMessage).mockRejectedValue(new Error('Network error'))
 
       const result = await messageRouter.routeMessage(mockMessage)
 
@@ -116,7 +130,7 @@ describe('MessageRouter', () => {
 
     it('should include route metadata in successful response', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
         config: { timeout: 5000 },
@@ -129,7 +143,7 @@ describe('MessageRouter', () => {
       }
 
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      mockAgentClient.sendMessage.mockResolvedValue(agentResponse)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValue(agentResponse)
 
       const result = await messageRouter.routeMessage(mockMessage)
 
@@ -140,15 +154,70 @@ describe('MessageRouter', () => {
       })
     })
 
+    it('should send response via WhatsApp provider when agent returns response', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://localhost:8000/agent',
+        environment: 'lab',
+      }
+
+      const agentResponse: AgentResponse = {
+        success: true,
+        response: 'Agent response text',
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValue(agentResponse)
+
+      const result = await messageRouter.routeMessage(mockMessage)
+
+      expect(result.success).toBe(true)
+      expect(mockWhatsAppProvider.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: mockMessage.from,
+          channelId: mockMessage.channelId,
+          text: 'Agent response text',
+        })
+      )
+    })
+
+    it('should always send response via configured provider', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://localhost:8000/agent',
+        environment: 'lab',
+      }
+
+      const agentResponse: AgentResponse = {
+        success: true,
+        response: 'Agent response text',
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValue(agentResponse)
+
+      const result = await messageRouter.routeMessage(mockMessage)
+
+      expect(result.success).toBe(true)
+      expect(mockWhatsAppProvider.sendMessage).toHaveBeenCalledTimes(1)
+      expect(mockWhatsAppProvider.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: mockMessage.from,
+          channelId: mockMessage.channelId,
+          text: 'Agent response text',
+        })
+      )
+    })
+
     it('should handle timeout errors from agent client', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
 
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      mockAgentClient.sendMessage.mockRejectedValue(
+      vi.mocked(mockAgentClient.sendMessage).mockRejectedValue(
         new Error('Request to agent timed out after 30000ms')
       )
 

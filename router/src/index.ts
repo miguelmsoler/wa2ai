@@ -8,24 +8,61 @@
 import fastify from 'fastify'
 import { registerWebhooks } from './webhooks-controller.js'
 import { registerRouteEndpoints } from './routes-controller.js'
-import { logger } from './core/logger.js'
+import { logger, isDebugMode } from './core/logger.js'
+import type { WhatsAppProvider } from './core/whatsapp-provider.js'
 import { getBaileysConnection } from './providers/baileys-connection.js'
+import { BaileysProvider } from './providers/baileys-provider.js'
+import { EvolutionProvider } from './providers/evolution-provider.js'
 import { InMemoryRoutesRepository } from './core/routes-repository.js'
 import { RouterService } from './core/router-service.js'
-import { MessageRouter, setupBaileysDirectRouting } from './core/message-router.js'
+import { MessageRouter } from './core/message-router.js'
+import { HttpAgentClient } from './infra/http-agent-client.js'
+import { setupBaileysDirectRouting } from './providers/baileys-routing.js'
 
 const DEBUG = process.env.WA2AI_DEBUG === 'true'
 const PORT = parseInt(process.env.WA2AI_PORT || '3000', 10)
+const PROVIDER = (process.env.WA2AI_PROVIDER || 'baileys').toLowerCase()
 
 const server = fastify({
   logger: DEBUG
 })
 
-// Register basic webhook endpoints
-registerWebhooks(server)
+// Webhook endpoints will be registered after routing system is initialized
 
 // Global routes repository instance (accessible for API endpoints)
 let globalRoutesRepository: InMemoryRoutesRepository | null = null
+
+/**
+ * Creates the appropriate WhatsApp provider based on WA2AI_PROVIDER.
+ * 
+ * Uses the abstract WhatsAppProvider interface, not concrete implementations.
+ * 
+ * @returns The WhatsApp provider instance or null if not configured
+ */
+function createWhatsAppProvider(): WhatsAppProvider | null {
+  if (PROVIDER === 'baileys') {
+    // BaileysProvider handles its own connection configuration internally
+    // This keeps index.ts free of provider-specific implementation details
+    return new BaileysProvider({
+      authDir: process.env.WA2AI_BAILEYS_AUTH_DIR || './auth_info_baileys',
+      printQRInTerminal: DEBUG,
+      // Allow messages from self (fromMe:true) for testing purposes
+      messageFilter: {
+        ignoreFromMe: false,
+        ignoreGroups: false,
+        ignoreStatusBroadcast: true,
+        ignoreJids: [],
+      },
+    })
+  } else if (PROVIDER === 'evolution') {
+    return new EvolutionProvider({
+      apiUrl: process.env.WA2AI_EVOLUTION_API_URL || 'http://evolution-api-lab:8080',
+      apiKey: process.env.WA2AI_EVOLUTION_API_KEY || 'default_key_change_me',
+      instanceName: 'wa2ai-lab',
+    })
+  }
+  return null
+}
 
 /**
  * Initializes the routing system.
@@ -45,12 +82,34 @@ function initializeRouting(): MessageRouter {
   // Create router service
   const routerService = new RouterService(globalRoutesRepository)
 
-  // Create message router
-  const messageRouter = new MessageRouter(routerService, {
-    agentClient: {
-      timeout: 30000, // 30 seconds
-    },
+  // Create agent client (infrastructure)
+  const agentClient = new HttpAgentClient({
+    timeout: 30000, // 30 seconds
   })
+
+  // Create WhatsApp provider
+  const whatsappProvider = createWhatsAppProvider()
+
+  if (isDebugMode()) {
+    logger.debug('[Index] Dependencies created', {
+      provider: PROVIDER,
+      hasProvider: !!whatsappProvider,
+      hasAgentClient: !!agentClient,
+    })
+  }
+
+  // Create message router with dependencies (whatsappProvider is required)
+  if (!whatsappProvider) {
+    throw new Error('WhatsApp provider is required for MessageRouter')
+  }
+
+  const messageRouter = new MessageRouter(
+    routerService,
+    agentClient,
+    {
+      whatsappProvider,
+    }
+  )
 
   // Register route management endpoints BEFORE server starts listening
   if (globalRoutesRepository) {
@@ -67,6 +126,19 @@ function initializeRouting(): MessageRouter {
     routeCount: globalRoutesRepository.getRouteCount(),
   })
 
+  // Register webhook endpoints with dependencies
+  if (whatsappProvider) {
+    registerWebhooks(server, {
+      messageRouter,
+      whatsappProvider,
+    })
+    if (DEBUG) {
+      logger.debug('[Index] Webhook endpoints registered with dependencies')
+    }
+  } else {
+    logger.warn('[Index] WhatsApp provider not available - webhook endpoints not registered')
+  }
+
   return messageRouter
 }
 
@@ -78,17 +150,8 @@ function initializeRouting(): MessageRouter {
  * QR code will be available at /qr endpoint once generated.
  */
 async function initializeBaileysConnection(messageRouter: MessageRouter): Promise<void> {
-  const connection = getBaileysConnection({
-    authDir: process.env.WA2AI_BAILEYS_AUTH_DIR || './auth_info_baileys',
-    printQRInTerminal: DEBUG,
-    // Allow messages from self (fromMe:true) for testing purposes
-    messageFilter: {
-      ignoreFromMe: false,
-      ignoreGroups: false,
-      ignoreStatusBroadcast: true,
-      ignoreJids: [],
-    },
-  })
+  // Get the already-configured connection (created in createWhatsAppProvider)
+  const connection = getBaileysConnection()
 
   try {
     await connection.connect()
@@ -124,9 +187,19 @@ server.listen({ port: PORT, host: '0.0.0.0' }, async (err, address) => {
     address,
     port: PORT,
     debugMode: DEBUG,
+    provider: PROVIDER,
   })
 
-  // Initialize Baileys connection with direct routing after server starts
-  await initializeBaileysConnection(messageRouter)
+  // Initialize provider based on WA2AI_PROVIDER environment variable
+  if (PROVIDER === 'baileys') {
+    await initializeBaileysConnection(messageRouter)
+  } else if (PROVIDER === 'evolution') {
+    logger.info('Evolution API provider selected - webhook endpoints available at /webhooks/whatsapp/lab')
+    // Evolution API uses webhooks, no direct connection needed
+    // Messages will be received via webhook endpoints registered in registerWebhooks
+  } else {
+    logger.warn(`Unknown provider: ${PROVIDER}. Valid options: 'baileys' or 'evolution'. Defaulting to 'baileys'.`)
+    await initializeBaileysConnection(messageRouter)
+  }
 })
 

@@ -30,6 +30,30 @@ export interface RoutesRepository {
 }
 
 /**
+ * Extended repository interface for mutable route storage.
+ * 
+ * This interface adds methods for modifying routes (add, remove).
+ * Not all repository implementations may support mutations (e.g., read-only repositories).
+ */
+export interface MutableRoutesRepository extends RoutesRepository {
+  /**
+   * Adds a route to the repository.
+   * 
+   * @param route - The route to add
+   * @returns Promise that resolves when the route is added
+   */
+  addRoute(route: Route): Promise<void>
+
+  /**
+   * Removes a route from the repository.
+   * 
+   * @param channelId - The channel ID of the route to remove
+   * @returns Promise that resolves to true if route was removed, false otherwise
+   */
+  removeRoute(channelId: string): Promise<boolean>
+}
+
+/**
  * Core router service that handles message routing logic.
  */
 export class RouterService {

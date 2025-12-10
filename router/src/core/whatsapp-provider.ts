@@ -7,7 +7,7 @@
  * This is a domain port (interface) and belongs in the core layer.
  */
 
-import type { OutgoingMessage } from './models.js'
+import type { IncomingMessage, OutgoingMessage } from './models.js'
 
 /**
  * Interface for WhatsApp provider implementations.
@@ -24,5 +24,16 @@ export interface WhatsAppProvider {
    * @throws {Error} If the message fails to send
    */
   sendMessage(message: OutgoingMessage): Promise<void>
+
+  /**
+   * Normalizes a webhook payload from the provider's specific format
+   * to the domain IncomingMessage model.
+   * 
+   * Each provider is responsible for normalizing its own webhook format.
+   * 
+   * @param payload - Raw webhook payload from the provider
+   * @returns Normalized IncomingMessage or null if payload is invalid or not a message
+   */
+  normalizeWebhook(payload: unknown): IncomingMessage | null
 }
 

@@ -40,9 +40,9 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 + Test WhatsApp connection and QR scan (0.5–1 h).
 + Implement message event handlers (1–1.5 h).
 + Integrate with direct routing (0.5–1 h).
-- Test message reception end-to-end (0.5–1 h).
-- Create/update `docker-compose.lab.yml` for Baileys mode (0.5 h).
-- Update environment variables for provider selection (0.2 h).
++ Test message reception end-to-end (0.5–1 h).
++ Create/update `docker-compose.lab.yml` for Baileys mode (0.5 h).
++ Udate environment variables for provider selection (0.2 h).
 
 **Note:** The `BaileysProvider` class implementation itself is done in Day 3 (Section 3.2). Day 2A focuses on Baileys infrastructure setup and integration.
 
@@ -50,19 +50,25 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 
 ## 🗓️ Day 3 — wa2ai implementation: Models + Provider (5.5–7 h)
 
-- Define models: `IncomingMessage`, `OutgoingMessage`, `Route` (1.5 h).
-- Implement `WhatsAppProvider` interface (0.5 h).
-- Implement `EvolutionProvider` class implementing `WhatsAppProvider` interface (1.5–2 h).
-- Implement `BaileysProvider` class implementing `WhatsAppProvider` interface (2–3 h).
-- Test message sending from wa2ai → Provider → WhatsApp.
++ Define models: `IncomingMessage`, `OutgoingMessage`, `Route` (1.5 h).
++ Implement `WhatsAppProvider` interface (0.5 h).
++ Implement `EvolutionProvider` class implementing `WhatsAppProvider` interface (1.5–2 h).
++ Implement `BaileysProvider` class implementing `WhatsAppProvider` interface (2–3 h).
++ Test message sending from wa2ai → Provider → WhatsApp.
 
 ---
 
-## 🗓️ Day 4 — wa2ai implementation: Core routing (4 h)
+## 🗓️ Day 4 — wa2ai implementation: Core routing (6–7 h)
 
 - Implement `RoutesRepository` (JSON or memory) (0.5–1 h).
 - Implement `RouterService.onIncomingMessage` (2.5–3 h).
 - Process agent response and send message via provider (1 h).
+- Create PostgreSQL schema for routes table (0.5 h).
+- Implement `PostgresRoutesRepository` implementing `RoutesRepository` interface (1–1.5 h).
+- Update `docker-compose.lab.yml` to add PostgreSQL dependency for `wa2ai-lab` (0.2 h).
+- Update `index.ts` to use `PostgresRoutesRepository` instead of `InMemoryRoutesRepository` (0.3 h).
+- Add PostgreSQL connection environment variables (0.2 h).
+- Test route persistence across container restarts (0.3–0.5 h).
 
 ---
 
@@ -128,7 +134,7 @@ Day 1  | ████ Environment prep (4-6h)
 Day 2  | ████ Evolution API infrastructure (6-8h) - PARTIALLY COMPLETED
 Day 2A | ████████ Baileys infrastructure (8-12h)
 Day 3  | ██████ Models + Providers (5.5-7h)
-Day 4  | ████ Routing core (4h)
+Day 4  | ██████ Routing core + persistence (6-7h)
 Day 5  | ████ Controller + Config (4-5h)
 Day 6  | ████ ADK integration (3-4h)
 Day 7  | ████ E2E integration (4-6h)

@@ -9,7 +9,7 @@
 import type { FastifyInstance } from 'fastify'
 import { logger, isDebugMode } from './core/logger.js'
 import type { Route } from './core/models.js'
-import type { InMemoryRoutesRepository } from './core/routes-repository.js'
+import type { MutableRoutesRepository } from './core/router-service.js'
 
 /**
  * Registers route management endpoints on the Fastify instance.
@@ -21,11 +21,11 @@ import type { InMemoryRoutesRepository } from './core/routes-repository.js'
  * - DELETE /api/routes/:channelId - Remove a route
  * 
  * @param app - Fastify application instance
- * @param routesRepository - Routes repository instance (must be InMemoryRoutesRepository for addRoute/removeRoute)
+ * @param routesRepository - Routes repository instance (must implement MutableRoutesRepository for addRoute/removeRoute)
  */
 export function registerRouteEndpoints(
   app: FastifyInstance,
-  routesRepository: InMemoryRoutesRepository
+  routesRepository: MutableRoutesRepository
 ): void {
   /**
    * POST /api/routes - Add a new route.

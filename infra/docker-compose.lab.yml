@@ -1,7 +1,10 @@
 services:
+  # PostgreSQL database (only needed if WA2AI_PROVIDER=evolution)
   postgres:
     image: postgres:16-alpine
     container_name: evolution-postgres
+    profiles:
+      - evolution
     environment:
       - POSTGRES_DB=evolution_lab
       - POSTGRES_USER=evolution
@@ -17,9 +20,13 @@ services:
       timeout: 5s
       retries: 5
 
+  # Evolution API service (only included if COMPOSE_PROFILES includes 'evolution')
+  # Automatically included when WA2AI_PROVIDER=evolution via wrapper script
   evolution-api-lab:
     image: evoapicloud/evolution-api:v2.3.7
     container_name: evolution-api-lab
+    profiles:
+      - evolution
     ports:
       - "8080:8080"
     depends_on:
@@ -86,18 +93,26 @@ services:
       - WA2AI_DEBUG=${WA2AI_DEBUG:-true}
       # Server port
       - WA2AI_PORT=3000
-      # Evolution API configuration
+      # Provider selection: 'baileys' or 'evolution' (default: 'baileys')
+      - WA2AI_PROVIDER=${WA2AI_PROVIDER:-baileys}
+      # Evolution API configuration (only used if WA2AI_PROVIDER=evolution)
       - WA2AI_EVOLUTION_API_URL=http://evolution-api-lab:8080
       - WA2AI_EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-default_key_change_me}
-      # Baileys configuration
+      # Baileys configuration (only used if WA2AI_PROVIDER=baileys)
       - WA2AI_BAILEYS_AUTH_DIR=/app/auth_info_baileys
     volumes:
       - baileys_auth:/app/auth_info_baileys
+    # When using Evolution API, wait for evolution-api-lab to be ready
+    # When using Baileys, this dependency is not needed but Docker Compose requires it
+    # The wrapper script handles this by only starting evolution-api-lab when needed
     depends_on:
-      postgres:
-        condition: service_healthy
       evolution-api-lab:
         condition: service_started
+        required: false
+    extra_hosts:
+      # Map host.docker.internal to the Docker gateway IP (for Linux compatibility)
+      # This allows the container to access services running on the host machine
+      - "host.docker.internal:host-gateway"
     networks:
       - wa2ai-network
     restart: unless-stopped

@@ -3,7 +3,10 @@
  * Mock AI Agent for testing wa2ai routing.
  * 
  * This simple HTTP server simulates an AI agent endpoint.
- * It receives messages, logs them, and acknowledges receipt without sending responses back.
+ * It receives messages, logs them, and sends responses back.
+ * 
+ * Safety mechanism: Limits responses to 3 messages to prevent sending messages to everyone.
+ * After 3 responses, it only logs received messages without responding.
  * 
  * Usage:
  *   node tests/fixtures/mock-agent.js [port]
@@ -14,6 +17,10 @@
 import http from 'http'
 
 const PORT = parseInt(process.argv[2] || '8000', 10)
+
+// Global counter to limit message responses (safety mechanism)
+let messagesSentCount = 0
+const MAX_MESSAGES_TO_SEND = 3
 
 const server = http.createServer((req, res) => {
   // Only handle POST requests
@@ -39,17 +46,41 @@ const server = http.createServer((req, res) => {
         text: message.text,
       })
 
-      // Acknowledge message but don't send response back
+      // Check if we've reached the message limit
+      if (messagesSentCount >= MAX_MESSAGES_TO_SEND) {
+        // Only log, don't send response (safety mechanism)
+        console.log(`[MockAgent] Message limit reached (${MAX_MESSAGES_TO_SEND}). Logging only, no response sent.`, {
+          messageId: message.id,
+          messagesSentCount,
+        })
+        
+        const response = {
+          success: true,
+          // No response field - limit reached, don't send response
+        }
+
+        setTimeout(() => {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify(response))
+        }, 100)
+        return
+      }
+
+      // Increment counter and send response
+      messagesSentCount++
       const response = {
         success: true,
-        // No response field - agent processed but didn't reply
+        response: `Echo from wa2ai: ${message.text}`,
       }
 
       // Simulate processing delay
       setTimeout(() => {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify(response))
-        console.log(`[MockAgent] Acknowledged message:`, { messageId: message.id })
+        console.log(`[MockAgent] Sent response (${messagesSentCount}/${MAX_MESSAGES_TO_SEND}):`, {
+          messageId: message.id,
+          response: response.response,
+        })
       }, 100) // 100ms delay
     } catch (error) {
       console.error('[MockAgent] Error processing request:', error)

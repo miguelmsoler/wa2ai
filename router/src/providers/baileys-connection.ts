@@ -325,10 +325,8 @@ export class BaileysConnectionService {
           })
         }
 
-        // If handler returns a response, send it back
-        if (result.success && result.response) {
-          await this.sendTextMessage(message.from, result.response)
-        }
+        // Response sending is handled by the handler (e.g., MessageRouter)
+        // BaileysConnection only dispatches messages to handlers
       } catch (error) {
         logger.error('[BaileysConnection] Message handler error', {
           messageId: message.id,

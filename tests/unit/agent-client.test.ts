@@ -3,20 +3,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { AgentClient } from '../../router/src/core/agent-client.js'
+import { HttpAgentClient } from '../../router/src/infra/http-agent-client.js'
+import type { AgentClient } from '../../router/src/core/agent-client.js'
 import type { IncomingMessage } from '../../router/src/core/models.js'
 
 // Mock fetch globally
 global.fetch = vi.fn()
 
-describe('AgentClient', () => {
+describe('HttpAgentClient', () => {
   let client: AgentClient
   let fetchMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     fetchMock = global.fetch as ReturnType<typeof vi.fn>
     fetchMock.mockClear()
-    client = new AgentClient()
+    client = new HttpAgentClient()
   })
 
   afterEach(() => {
@@ -26,8 +27,8 @@ describe('AgentClient', () => {
   describe('sendMessage', () => {
     const mockMessage: IncomingMessage = {
       id: 'MSG001',
-      from: '5491155551234@s.whatsapp.net',
-      channelId: '5491155551234',
+      from: 'test-user-123@s.whatsapp.net',
+      channelId: 'test-channel-123',
       text: 'Hello, agent!',
       timestamp: new Date('2024-01-01T00:00:00Z'),
       metadata: { messageType: 'conversation' },
@@ -108,7 +109,7 @@ describe('AgentClient', () => {
     // Direct timeout testing requires fake timers which don't work well with fetch
 
     it('should include custom headers', async () => {
-      const customClient = new AgentClient({
+      const customClient = new HttpAgentClient({
         headers: {
           'Authorization': 'Bearer token123',
           'X-Custom-Header': 'value',
@@ -155,24 +156,24 @@ describe('AgentClient', () => {
 
   describe('isValidEndpoint', () => {
     it('should validate HTTP URLs', () => {
-      expect(AgentClient.isValidEndpoint('http://localhost:8000/agent')).toBe(true)
-      expect(AgentClient.isValidEndpoint('http://example.com/agent')).toBe(true)
+      expect(HttpAgentClient.isValidEndpoint('http://localhost:8000/agent')).toBe(true)
+      expect(HttpAgentClient.isValidEndpoint('http://example.com/agent')).toBe(true)
     })
 
     it('should validate HTTPS URLs', () => {
-      expect(AgentClient.isValidEndpoint('https://example.com/agent')).toBe(true)
-      expect(AgentClient.isValidEndpoint('https://api.example.com/v1/agent')).toBe(true)
+      expect(HttpAgentClient.isValidEndpoint('https://example.com/agent')).toBe(true)
+      expect(HttpAgentClient.isValidEndpoint('https://api.example.com/v1/agent')).toBe(true)
     })
 
     it('should reject invalid URLs', () => {
-      expect(AgentClient.isValidEndpoint('not-a-url')).toBe(false)
-      expect(AgentClient.isValidEndpoint('ftp://example.com')).toBe(false)
-      expect(AgentClient.isValidEndpoint('')).toBe(false)
+      expect(HttpAgentClient.isValidEndpoint('not-a-url')).toBe(false)
+      expect(HttpAgentClient.isValidEndpoint('ftp://example.com')).toBe(false)
+      expect(HttpAgentClient.isValidEndpoint('')).toBe(false)
     })
 
     it('should reject URLs without protocol', () => {
-      expect(AgentClient.isValidEndpoint('localhost:8000/agent')).toBe(false)
-      expect(AgentClient.isValidEndpoint('example.com/agent')).toBe(false)
+      expect(HttpAgentClient.isValidEndpoint('localhost:8000/agent')).toBe(false)
+      expect(HttpAgentClient.isValidEndpoint('example.com/agent')).toBe(false)
     })
   })
 })

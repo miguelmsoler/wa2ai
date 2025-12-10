@@ -7,36 +7,68 @@
  */
 
 import type { FastifyInstance } from 'fastify'
-import { logger } from './core/logger.js'
-import { normalizeEvolutionApiWebhook } from './core/webhook-adapter.js'
+import { logger, isDebugMode } from './core/logger.js'
+import type { MessageRouter } from './core/message-router.js'
+import type { WhatsAppProvider } from './core/whatsapp-provider.js'
 import { getBaileysConnection } from './providers/baileys-connection.js'
+
+/**
+ * Dependencies required by webhook controller.
+ */
+export interface WebhookControllerDependencies {
+  /** Message router for processing incoming messages */
+  messageRouter: MessageRouter
+  /** WhatsApp provider for normalizing webhook payloads */
+  whatsappProvider: WhatsAppProvider
+}
 
 /**
  * Registers webhook endpoints on the Fastify instance.
  * 
+ * Dependencies are injected via parameters to avoid global state
+ * and improve testability and maintainability.
+ * 
  * @param app - Fastify application instance
+ * @param dependencies - Required dependencies (messageRouter and whatsappProvider)
  */
-export function registerWebhooks(app: FastifyInstance): void {
+export function registerWebhooks(
+  app: FastifyInstance,
+  dependencies: WebhookControllerDependencies
+): void {
+  const { messageRouter, whatsappProvider } = dependencies
+
+  if (isDebugMode()) {
+    logger.debug('[WebhookController] Registering webhooks with dependencies')
+  }
   app.post('/webhooks/whatsapp/lab', async (request, reply) => {
     const body = request.body as unknown
     
     // Log incoming webhook
-    logger.debug('[WebhookController] Received webhook', {
-      body,
-    })
+    if (isDebugMode()) {
+      logger.debug('[WebhookController] Received webhook', {
+        body,
+      })
+    }
     
-    // Delegate normalization to domain adapter
-    const normalizedMessage = normalizeEvolutionApiWebhook(body)
+    // Normalize webhook using provider (each provider knows its own format)
+    const normalizedMessage = whatsappProvider.normalizeWebhook(body)
     
     if (normalizedMessage) {
-      // TODO: Route message to appropriate agent via RouterService
-      // This will be implemented in Phase 1
-      // const route = await routerService.routeMessage(normalizedMessage)
-      // await processMessage(normalizedMessage, route)
+      // Route message through MessageRouter
+      const result = await messageRouter.routeMessage(normalizedMessage)
       
-      logger.info('[WebhookController] Message processed', {
+      if (isDebugMode()) {
+        logger.debug('[WebhookController] Message routed', {
+          messageId: normalizedMessage.id,
+          success: result.success,
+          hasResponse: !!result.response,
+        })
+      }
+      
+      logger.info('[WebhookController] Message processed via router', {
         messageId: normalizedMessage.id,
         channelId: normalizedMessage.channelId,
+        success: result.success,
       })
     }
     

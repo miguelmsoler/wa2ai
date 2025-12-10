@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { registerWebhooks } from '../../router/src/webhooks-controller.js'
-import * as webhookAdapter from '../../router/src/core/webhook-adapter.js'
+import type { MessageRouter } from '../../router/src/core/message-router.js'
+import type { WhatsAppProvider } from '../../router/src/core/whatsapp-provider.js'
 import * as baileysConnection from '../../router/src/providers/baileys-connection.js'
 
 // Mock the baileys-connection module
@@ -16,27 +17,40 @@ describe('WebhooksController', () => {
   let mockReply: FastifyReply
   let consoleLogSpy: ReturnType<typeof vi.spyOn>
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+  let mockProvider: WhatsAppProvider
+  let mockMessageRouter: MessageRouter
 
   beforeEach(() => {
     // Mock console.log and console.warn
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {}) as any
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {}) as any
     
-    // Mock webhook adapter
-    vi.spyOn(webhookAdapter, 'normalizeEvolutionApiWebhook').mockImplementation((payload: unknown) => {
-      const p = payload as { event?: string; instance?: string; data?: unknown }
-      if (p.event === 'messages.upsert' && p.data) {
-        const msg = p.data as { key?: { remoteJid?: string; id?: string }; from?: string; message?: { conversation?: string; extendedTextMessage?: { text?: string }; imageMessage?: { caption?: string } } }
-        return {
-          id: msg.key?.id || 'test-id',
-          from: msg.key?.remoteJid || msg.from || 'unknown',
-          channelId: (msg.key?.remoteJid || msg.from || 'unknown').split('@')[0],
-          text: msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '[media or unsupported message type]',
-          timestamp: new Date(),
+    // Mock WhatsApp provider
+    mockProvider = {
+      sendMessage: vi.fn().mockResolvedValue(undefined),
+      normalizeWebhook: vi.fn((payload: unknown) => {
+        const p = payload as { event?: string; instance?: string; data?: unknown }
+        if (p.event === 'messages.upsert' && p.data) {
+          const msg = p.data as { key?: { remoteJid?: string; id?: string }; from?: string; message?: { conversation?: string; extendedTextMessage?: { text?: string }; imageMessage?: { caption?: string } } }
+          return {
+            id: msg.key?.id || 'test-id',
+            from: msg.key?.remoteJid || msg.from || 'unknown',
+            channelId: (msg.key?.remoteJid || msg.from || 'unknown').split('@')[0],
+            text: msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '[media or unsupported message type]',
+            timestamp: new Date(),
+          }
         }
-      }
-      return null
-    })
+        return null
+      }),
+    }
+    
+    // Mock message router
+    mockMessageRouter = {
+      routeMessage: vi.fn().mockResolvedValue({
+        success: true,
+        response: undefined,
+      }),
+    } as unknown as MessageRouter
 
     // Mock FastifyReply
     mockReply = {
@@ -87,7 +101,10 @@ describe('WebhooksController', () => {
 
   describe('registerWebhooks', () => {
     it('should register webhook endpoints', () => {
-      registerWebhooks(mockApp)
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
+      })
 
       expect(mockApp.post).toHaveBeenCalledWith(
         '/webhooks/whatsapp/lab',
@@ -103,7 +120,10 @@ describe('WebhooksController', () => {
 
   describe('/webhooks/whatsapp/lab', () => {
     beforeEach(() => {
-      registerWebhooks(mockApp)
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
+      })
     })
 
     it('should handle messages.upsert event with correct Evolution API format', async () => {
@@ -133,7 +153,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       expect(mockReply.code).toHaveBeenCalledWith(200)
       expect(mockReply.send).toHaveBeenCalledWith({
         status: 'ok',
@@ -165,7 +185,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
 
@@ -193,7 +213,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
 
@@ -219,7 +239,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
 
@@ -239,7 +259,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       // Adapter returns null for non-message events
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
@@ -260,7 +280,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
 
@@ -274,7 +294,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
 
@@ -282,23 +302,10 @@ describe('WebhooksController', () => {
       process.env.WA2AI_DEBUG = 'true'
       
       // Re-register webhooks to pick up new DEBUG value
-      // Re-mock adapter before re-registering
-      vi.spyOn(webhookAdapter, 'normalizeEvolutionApiWebhook').mockImplementation((payload: unknown) => {
-        const p = payload as { event?: string; instance?: string; data?: unknown }
-        if (p.event === 'messages.upsert' && p.data) {
-          const msg = p.data as { key?: { remoteJid?: string; id?: string }; from?: string; message?: { conversation?: string } }
-          return {
-            id: msg.key?.id || 'test-id',
-            from: msg.key?.remoteJid || msg.from || 'unknown',
-            channelId: (msg.key?.remoteJid || msg.from || 'unknown').split('@')[0],
-            text: msg.message?.conversation || '[media or unsupported message type]',
-            timestamp: new Date(),
-          }
-        }
-        return null
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
       })
-      
-      registerWebhooks(mockApp)
       
       const handler = (mockApp as any).labHandler
       const payload = {
@@ -320,7 +327,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
 
@@ -328,23 +335,10 @@ describe('WebhooksController', () => {
       process.env.WA2AI_DEBUG = 'false'
       
       // Re-register webhooks to pick up new DEBUG value
-      // Re-mock adapter before re-registering
-      vi.spyOn(webhookAdapter, 'normalizeEvolutionApiWebhook').mockImplementation((payload: unknown) => {
-        const p = payload as { event?: string; instance?: string; data?: unknown }
-        if (p.event === 'messages.upsert' && p.data) {
-          const msg = p.data as { key?: { remoteJid?: string; id?: string }; from?: string; message?: { conversation?: string } }
-          return {
-            id: msg.key?.id || 'test-id',
-            from: msg.key?.remoteJid || msg.from || 'unknown',
-            channelId: (msg.key?.remoteJid || msg.from || 'unknown').split('@')[0],
-            text: msg.message?.conversation || '[media or unsupported message type]',
-            timestamp: new Date(),
-          }
-        }
-        return null
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
       })
-      
-      registerWebhooks(mockApp)
       
       const handler = (mockApp as any).labHandler
       const payload = {
@@ -366,7 +360,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
 
@@ -382,7 +376,7 @@ describe('WebhooksController', () => {
 
       await handler(mockRequest, mockReply)
 
-      expect(webhookAdapter.normalizeEvolutionApiWebhook).toHaveBeenCalledWith(payload)
+      expect(mockProvider.normalizeWebhook).toHaveBeenCalledWith(payload)
       // Adapter returns null when data is missing
       expect(mockReply.code).toHaveBeenCalledWith(200)
     })
@@ -390,7 +384,10 @@ describe('WebhooksController', () => {
 
   describe('/health', () => {
     beforeEach(() => {
-      registerWebhooks(mockApp)
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
+      })
     })
 
     it('should return healthy status', async () => {
@@ -479,8 +476,22 @@ describe('QR Code Endpoints', () => {
   })
 
   describe('GET /qr', () => {
+    let mockMessageRouter: MessageRouter
+    let mockProvider: WhatsAppProvider
+
     beforeEach(() => {
-      registerWebhooks(mockApp)
+      mockProvider = {
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+        normalizeWebhook: vi.fn().mockReturnValue(null),
+      }
+      mockMessageRouter = {
+        routeMessage: vi.fn(),
+      } as unknown as MessageRouter
+      
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
+      })
     })
 
     it('should return connected page when status is connected', async () => {
@@ -553,7 +564,18 @@ describe('QR Code Endpoints', () => {
         lastError: null,
       })
 
-      registerWebhooks(mockApp)
+      const mockProvider = {
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+        normalizeWebhook: vi.fn().mockReturnValue(null),
+      }
+      const mockMessageRouter = {
+        routeMessage: vi.fn(),
+      } as unknown as MessageRouter
+
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
+      })
       const handler = (mockApp as any).qrHandler
       await handler(mockRequest, mockReply)
 
@@ -571,8 +593,22 @@ describe('QR Code Endpoints', () => {
   })
 
   describe('GET /qr/status', () => {
+    let mockMessageRouter: MessageRouter
+    let mockProvider: WhatsAppProvider
+
     beforeEach(() => {
-      registerWebhooks(mockApp)
+      mockProvider = {
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+        normalizeWebhook: vi.fn().mockReturnValue(null),
+      }
+      mockMessageRouter = {
+        routeMessage: vi.fn(),
+      } as unknown as MessageRouter
+      
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
+      })
     })
 
     it('should return status when connected', async () => {
@@ -634,8 +670,22 @@ describe('QR Code Endpoints', () => {
   })
 
   describe('GET /qr/image', () => {
+    let mockMessageRouter: MessageRouter
+    let mockProvider: WhatsAppProvider
+
     beforeEach(() => {
-      registerWebhooks(mockApp)
+      mockProvider = {
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+        normalizeWebhook: vi.fn().mockReturnValue(null),
+      }
+      mockMessageRouter = {
+        routeMessage: vi.fn(),
+      } as unknown as MessageRouter
+      
+      registerWebhooks(mockApp, {
+        messageRouter: mockMessageRouter,
+        whatsappProvider: mockProvider,
+      })
     })
 
     it('should return 404 when no QR code is available', async () => {

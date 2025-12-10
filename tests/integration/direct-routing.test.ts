@@ -7,7 +7,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { InMemoryRoutesRepository } from '../../router/src/core/routes-repository.js'
 import { RouterService } from '../../router/src/core/router-service.js'
-import { MessageRouter, setupBaileysDirectRouting } from '../../router/src/core/message-router.js'
+import { MessageRouter } from '../../router/src/core/message-router.js'
+import { BaileysProvider } from '../../router/src/providers/baileys-provider.js'
+import { HttpAgentClient } from '../../router/src/infra/http-agent-client.js'
+import { setupBaileysDirectRouting } from '../../router/src/providers/baileys-routing.js'
 import { getBaileysConnection } from '../../router/src/providers/baileys-connection.js'
 import type { IncomingMessage, Route } from '../../router/src/core/models.js'
 
@@ -46,7 +49,19 @@ describe('Direct Routing Integration', () => {
   beforeEach(() => {
     routesRepository = new InMemoryRoutesRepository()
     routerService = new RouterService(routesRepository)
-    messageRouter = new MessageRouter(routerService)
+    
+    // Create agent client
+    const agentClient = new HttpAgentClient()
+    
+    // Create BaileysProvider for message router
+    const baileysProvider = new BaileysProvider()
+    messageRouter = new MessageRouter(
+      routerService,
+      agentClient,
+      {
+        whatsappProvider: baileysProvider,
+      }
+    )
 
     fetchMock = global.fetch as ReturnType<typeof vi.fn>
     fetchMock.mockClear()
@@ -60,7 +75,7 @@ describe('Direct Routing Integration', () => {
     it('should route message from Baileys to agent and back', async () => {
       // Setup route
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
@@ -78,8 +93,8 @@ describe('Direct Routing Integration', () => {
       // Simulate incoming message from Baileys
       const incomingMessage: IncomingMessage = {
         id: 'BAILEYS_MSG_001',
-        from: '5491155551234@s.whatsapp.net',
-        channelId: '5491155551234',
+        from: 'test-user-123@s.whatsapp.net',
+        channelId: 'test-channel-123',
         text: 'Hello, agent!',
         timestamp: new Date(),
       }
@@ -111,7 +126,7 @@ describe('Direct Routing Integration', () => {
 
     it('should handle multiple messages in sequence', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
@@ -129,16 +144,16 @@ describe('Direct Routing Integration', () => {
 
       const message1: IncomingMessage = {
         id: 'MSG001',
-        from: '5491155551234@s.whatsapp.net',
-        channelId: '5491155551234',
+        from: 'test-user-123@s.whatsapp.net',
+        channelId: 'test-channel-123',
         text: 'Message 1',
         timestamp: new Date(),
       }
 
       const message2: IncomingMessage = {
         id: 'MSG002',
-        from: '5491155551234@s.whatsapp.net',
-        channelId: '5491155551234',
+        from: 'test-user-123@s.whatsapp.net',
+        channelId: 'test-channel-123',
         text: 'Message 2',
         timestamp: new Date(),
       }
@@ -153,7 +168,7 @@ describe('Direct Routing Integration', () => {
 
     it('should handle agent errors gracefully', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
@@ -169,8 +184,8 @@ describe('Direct Routing Integration', () => {
 
       const message: IncomingMessage = {
         id: 'MSG001',
-        from: '5491155551234@s.whatsapp.net',
-        channelId: '5491155551234',
+        from: 'test-user-123@s.whatsapp.net',
+        channelId: 'test-channel-123',
         text: 'Test message',
         timestamp: new Date(),
       }
@@ -183,7 +198,7 @@ describe('Direct Routing Integration', () => {
 
     it('should handle network errors', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
@@ -193,8 +208,8 @@ describe('Direct Routing Integration', () => {
 
       const message: IncomingMessage = {
         id: 'MSG001',
-        from: '5491155551234@s.whatsapp.net',
-        channelId: '5491155551234',
+        from: 'test-user-123@s.whatsapp.net',
+        channelId: 'test-channel-123',
         text: 'Test message',
         timestamp: new Date(),
       }
@@ -208,8 +223,8 @@ describe('Direct Routing Integration', () => {
     it('should return error when no route exists', async () => {
       const message: IncomingMessage = {
         id: 'MSG001',
-        from: '5491155551234@s.whatsapp.net',
-        channelId: '5491155551234',
+        from: 'test-user-123@s.whatsapp.net',
+        channelId: 'test-channel-123',
         text: 'Test message',
         timestamp: new Date(),
       }
@@ -235,7 +250,7 @@ describe('Direct Routing Integration', () => {
 
     it('should handle message through Baileys handler', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
@@ -254,8 +269,8 @@ describe('Direct Routing Integration', () => {
       // Simulate message from Baileys
       const message: IncomingMessage = {
         id: 'BAILEYS_MSG',
-        from: '5491155551234@s.whatsapp.net',
-        channelId: '5491155551234',
+        from: 'test-user-123@s.whatsapp.net',
+        channelId: 'test-channel-123',
         text: 'Test',
         timestamp: new Date(),
       }
@@ -270,12 +285,12 @@ describe('Direct Routing Integration', () => {
   describe('Route Management', () => {
     it('should route to different agents based on channel', async () => {
       const route1: Route = {
-        channelId: '5491111111111',
+        channelId: 'test-channel-111',
         agentEndpoint: 'http://localhost:8000/agent1',
         environment: 'lab',
       }
       const route2: Route = {
-        channelId: '5492222222222',
+        channelId: 'test-channel-222',
         agentEndpoint: 'http://localhost:8000/agent2',
         environment: 'lab',
       }
@@ -296,7 +311,7 @@ describe('Direct Routing Integration', () => {
       const message1: IncomingMessage = {
         id: 'MSG1',
         from: '5491111111111@s.whatsapp.net',
-        channelId: '5491111111111',
+        channelId: 'test-channel-111',
         text: 'Message 1',
         timestamp: new Date(),
       }
@@ -304,7 +319,7 @@ describe('Direct Routing Integration', () => {
       const message2: IncomingMessage = {
         id: 'MSG2',
         from: '5492222222222@s.whatsapp.net',
-        channelId: '5492222222222',
+        channelId: 'test-channel-222',
         text: 'Message 2',
         timestamp: new Date(),
       }

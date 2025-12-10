@@ -197,10 +197,13 @@ Backend environment variables are managed through `.env` files in the project ro
 
 - `WA2AI_DEBUG` (default: `false`) – When set to `true`, enables detailed debug logging throughout the backend application.
 - `WA2AI_PORT` (default: `3000`) – Port on which the wa2ai router service listens.
-- `WA2AI_EVOLUTION_API_URL` – URL of the Evolution API instance (for lab mode).
-- `WA2AI_EVOLUTION_API_KEY` – API key for Evolution API authentication.
+- `WA2AI_PROVIDER` (default: `baileys`) – WhatsApp provider to use. Valid values: `baileys` (direct connection) or `evolution` (Evolution API webhook-based).
+- `WA2AI_EVOLUTION_API_URL` – URL of the Evolution API instance (for lab mode, only used if `WA2AI_PROVIDER=evolution`).
+- `WA2AI_EVOLUTION_API_KEY` – API key for Evolution API authentication (only used if `WA2AI_PROVIDER=evolution`).
+- `WA2AI_BAILEYS_AUTH_DIR` (default: `./auth_info_baileys`) – Directory to store Baileys authentication state (only used if `WA2AI_PROVIDER=baileys`).
 - `WA2AI_CLOUD_API_TOKEN` – Token for WhatsApp Cloud API (for prod mode, Phase 2).
 - `WA2AI_CLOUD_API_PHONE_NUMBER_ID` – Phone number ID for WhatsApp Cloud API (for prod mode, Phase 2).
+- `WA2AI_TEST_CHANNEL_ID` (optional) – Channel ID for testing purposes (your WhatsApp number without `@s.whatsapp.net`). Used for e2e testing and development workflows.
 
 Add new backend environment variables to `.env.example` with clear documentation about their purpose and required format.
 

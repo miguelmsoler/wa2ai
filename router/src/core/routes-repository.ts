@@ -5,11 +5,15 @@
  * and retrieving routing rules. Following Clean Architecture, this is
  * an infrastructure concern that implements the core interface.
  * 
+ * NOTE: This implementation is currently in `core/` for convenience during
+ * Phase 1. In a future refactor, it should be moved to an `infra/` layer
+ * to better separate infrastructure concerns from domain logic.
+ * 
  * @module core/routes-repository
  */
 
 import type { Route } from './models.js'
-import type { RoutesRepository } from './router-service.js'
+import type { MutableRoutesRepository } from './router-service.js'
 import { logger, isDebugMode } from './logger.js'
 
 /**
@@ -29,7 +33,7 @@ import { logger, isDebugMode } from './logger.js'
  * const route = await repository.findByChannelId('5491155551234')
  * ```
  */
-export class InMemoryRoutesRepository implements RoutesRepository {
+export class InMemoryRoutesRepository implements MutableRoutesRepository {
   private routes: Map<string, Route> = new Map()
 
   /**

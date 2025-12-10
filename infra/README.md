@@ -4,8 +4,9 @@ This directory contains Docker Compose configurations for deploying wa2ai in dif
 
 ## Files
 
-- `docker-compose.lab.yml` - Laboratory environment with Evolution API
+- `docker-compose.lab.yml` - Laboratory environment configuration (supports both Baileys and Evolution API)
 - `docker-compose.prod.yml` - Production environment with WhatsApp Cloud API
+- `docker-compose.sh` - Wrapper script that automatically sets `COMPOSE_PROFILES` based on `WA2AI_PROVIDER`
 - `Dockerfile.lab` - Docker image for wa2ai-lab service
 - `Dockerfile.prod` - Docker image for wa2ai-prod service (to be created in Phase 2)
 
@@ -31,6 +32,7 @@ EVOLUTION_LOG_LEVEL=INFO  # Optional: ERROR, WARN, INFO, DEBUG, LOG, VERBOSE, DA
 # wa2ai Configuration
 WA2AI_DEBUG=false  # Optional: Enable detailed debug logging
 WA2AI_PORT=3000    # Optional: Server port (default: 3000)
+WA2AI_PROVIDER=baileys  # Optional: WhatsApp provider ('baileys' or 'evolution', default: 'baileys')
 WA2AI_BAILEYS_AUTH_DIR=./auth_info_baileys  # Optional: Baileys auth directory (default: ./auth_info_baileys)
 ```
 
@@ -44,29 +46,68 @@ openssl rand -hex 32
 
 ### Starting the Lab Environment
 
+**Recommended: Use the wrapper script** (automatically includes/excludes Evolution API services based on `WA2AI_PROVIDER`):
+
 ```bash
 # From project root
-# Note: docker-compose automatically reads .env from project root
-docker compose -f infra/docker-compose.lab.yml --env-file .env up -d
+# The script reads WA2AI_PROVIDER from .env and sets COMPOSE_PROFILES automatically
+./infra/docker-compose.sh up -d
 
 # View logs
-docker compose -f infra/docker-compose.lab.yml logs -f
+./infra/docker-compose.sh logs -f
 
 # Stop services
-docker compose -f infra/docker-compose.lab.yml down
+./infra/docker-compose.sh down
 
 # Stop and remove volumes
-docker compose -f infra/docker-compose.lab.yml down -v
+./infra/docker-compose.sh down -v
 ```
 
-**Important:** When using `-f` to specify a compose file in a subdirectory, explicitly specify `--env-file .env` to ensure environment variables are loaded from the project root.
+**Alternative: Manual docker compose** (requires setting `COMPOSE_PROFILES` manually):
+
+```bash
+# For Baileys provider (default - excludes Evolution API services)
+docker compose -f infra/docker-compose.lab.yml --env-file .env up -d
+
+# For Evolution API provider (includes Evolution API services)
+COMPOSE_PROFILES=evolution docker compose -f infra/docker-compose.lab.yml --env-file .env up -d
+```
+
+**Important:** 
+- The wrapper script (`infra/docker-compose.sh`) automatically reads `WA2AI_PROVIDER` from `.env` and sets `COMPOSE_PROFILES` accordingly.
+- When `WA2AI_PROVIDER=baileys` (default), Evolution API services (`postgres`, `evolution-api-lab`) are excluded.
+- When `WA2AI_PROVIDER=evolution`, Evolution API services are automatically included.
+
+### Provider Selection
+
+wa2ai supports two WhatsApp providers in lab mode:
+
+- **Baileys** (default): Direct WhatsApp Web connection
+  - No external dependencies (Evolution API not required)
+  - Direct WebSocket connection to WhatsApp
+  - QR code authentication via `/qr` endpoint
+  - Set `WA2AI_PROVIDER=baileys` (or omit, as it's the default)
+
+- **Evolution API**: Webhook-based provider
+  - Requires `evolution-api-lab` and `postgres` services
+  - More complex setup but supports multi-instance
+  - Set `WA2AI_PROVIDER=evolution`
+
+**Note:** When using Baileys, you can comment out the `evolution-api-lab` service and its dependency in `docker-compose.lab.yml` to reduce resource usage.
 
 ### Services
 
-- **postgres** (internal port 5432)
+- **postgres** (internal port 5432) - *Automatically excluded when using Baileys*
   - PostgreSQL 16 database for Evolution API
   - Stores instances, messages, contacts, chats, labels, and historic data
   - Data persisted in Docker volume `postgres_data`
+  - Only started when `WA2AI_PROVIDER=evolution` (via Docker Compose profiles)
+
+- **evolution-api-lab** (port 8080) - *Automatically excluded when using Baileys*
+  - Evolution API instance for webhook-based messaging
+  - Only started when `WA2AI_PROVIDER=evolution` (via Docker Compose profiles)
+  - Access Evolution API dashboard at http://localhost:8080
+  - Access Evolution API Manager (web UI) at http://localhost:8080/manager/
   - Health check: `pg_isready`
 
 - **evolution-api-lab** (port 8080)

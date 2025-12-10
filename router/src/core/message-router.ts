@@ -13,20 +13,17 @@
 
 import type { IncomingMessage } from './models.js'
 import type { MessageHandlerResult } from './message-handler.js'
+import type { WhatsAppProvider } from './whatsapp-provider.js'
+import type { AgentClient } from './agent-client.js'
 import { RouterService } from './router-service.js'
-import { AgentClient } from './agent-client.js'
 import { logger, isDebugMode } from './logger.js'
-import { getBaileysConnection } from '../providers/baileys-connection.js'
 
 /**
  * Configuration for message router.
  */
 export interface MessageRouterConfig {
-  /** Agent client configuration */
-  agentClient?: {
-    timeout?: number
-    headers?: Record<string, string>
-  }
+  /** WhatsApp provider for sending responses back to users (required) */
+  whatsappProvider: WhatsAppProvider
 }
 
 /**
@@ -42,26 +39,26 @@ export interface MessageRouterConfig {
  * @example
  * ```typescript
  * const routerService = new RouterService(routesRepository)
- * const messageRouter = new MessageRouter(routerService)
+ * const messageRouter = new MessageRouter(routerService, agentClient, { whatsappProvider })
  * 
  * const result = await messageRouter.routeMessage(incomingMessage)
- * if (result.success && result.response) {
- *   // Send response back via WhatsApp
- * }
+ * // Response is automatically sent back via WhatsApp provider
  * ```
  */
 export class MessageRouter {
-  private agentClient: AgentClient
+  private whatsappProvider: WhatsAppProvider
 
   constructor(
     private routerService: RouterService,
-    config: MessageRouterConfig = {}
+    private agentClient: AgentClient,
+    config: MessageRouterConfig
   ) {
-    this.agentClient = new AgentClient(config.agentClient)
+    this.whatsappProvider = config.whatsappProvider
 
     if (isDebugMode()) {
       logger.debug('[MessageRouter] Initialized', {
         hasRouterService: !!routerService,
+        hasAgentClient: !!agentClient,
       })
     }
   }
@@ -163,6 +160,39 @@ export class MessageRouter {
         hasResponse: !!agentResponse.response,
       })
 
+      // If agent returned a response, send it back via WhatsApp provider
+      if (agentResponse.response) {
+        try {
+          await this.whatsappProvider.sendMessage({
+            to: message.from,
+            channelId: message.channelId,
+            text: agentResponse.response,
+            metadata: {
+              originalMessageId: message.id,
+              agentEndpoint: route.agentEndpoint,
+            },
+          })
+
+          if (isDebugMode()) {
+            logger.debug('[MessageRouter] Response sent back to user via provider', {
+              messageId: message.id,
+              responseLength: agentResponse.response.length,
+            })
+          }
+
+          logger.info('[MessageRouter] Complete message flow successful', {
+            messageId: message.id,
+            channelId: message.channelId,
+          })
+        } catch (error) {
+          logger.error('[MessageRouter] Failed to send response back via provider', {
+            messageId: message.id,
+            error: error instanceof Error ? error.message : String(error),
+          })
+          // Continue and return success even if sending response fails
+        }
+      }
+
       return {
         success: true,
         response: agentResponse.response,
@@ -193,66 +223,4 @@ export class MessageRouter {
   }
 }
 
-/**
- * Sets up direct routing for Baileys messages.
- * 
- * This function connects BaileysConnectionService with MessageRouter,
- * creating a complete message flow from WhatsApp to AI agents.
- * 
- * @param messageRouter - The message router instance
- * 
- * @example
- * ```typescript
- * const routerService = new RouterService(routesRepository)
- * const messageRouter = new MessageRouter(routerService)
- * setupBaileysDirectRouting(messageRouter)
- * ```
- */
-export function setupBaileysDirectRouting(messageRouter: MessageRouter): void {
-  if (isDebugMode()) {
-    logger.debug('[MessageRouter] Setting up Baileys direct routing')
-  }
-
-  const connection = getBaileysConnection()
-
-  // Register message handler that routes through MessageRouter
-  connection.onMessage(async (message) => {
-    if (isDebugMode()) {
-      logger.debug('[MessageRouter] Baileys message received', {
-        messageId: message.id,
-        channelId: message.channelId,
-      })
-    }
-
-    const result = await messageRouter.routeMessage(message)
-
-    // If agent returned a response, send it back via Baileys
-    if (result.success && result.response) {
-      try {
-        await connection.sendTextMessage(message.from, result.response)
-
-        if (isDebugMode()) {
-          logger.debug('[MessageRouter] Response sent back to user', {
-            messageId: message.id,
-            responseLength: result.response.length,
-          })
-        }
-
-        logger.info('[MessageRouter] Complete message flow successful', {
-          messageId: message.id,
-          channelId: message.channelId,
-        })
-      } catch (error) {
-        logger.error('[MessageRouter] Failed to send response back', {
-          messageId: message.id,
-          error: error instanceof Error ? error.message : String(error),
-        })
-      }
-    }
-
-    return result
-  })
-
-  logger.info('[MessageRouter] Baileys direct routing configured')
-}
 

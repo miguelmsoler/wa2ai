@@ -21,27 +21,27 @@ describe('InMemoryRoutesRepository', () => {
 
     it('should return route when channel exists', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
 
       await repository.addRoute(route)
-      const result = await repository.findByChannelId('5491155551234')
+      const result = await repository.findByChannelId('test-channel-123')
 
       expect(result).toEqual(route)
     })
 
     it('should return null after route is removed', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
 
       await repository.addRoute(route)
-      await repository.removeRoute('5491155551234')
-      const result = await repository.findByChannelId('5491155551234')
+      await repository.removeRoute('test-channel-123')
+      const result = await repository.findByChannelId('test-channel-123')
 
       expect(result).toBeNull()
     })
@@ -55,12 +55,12 @@ describe('InMemoryRoutesRepository', () => {
 
     it('should return all routes', async () => {
       const route1: Route = {
-        channelId: '5491111111111',
+        channelId: 'test-channel-111',
         agentEndpoint: 'http://localhost:8000/agent1',
         environment: 'lab',
       }
       const route2: Route = {
-        channelId: '5492222222222',
+        channelId: 'test-channel-222',
         agentEndpoint: 'http://localhost:8000/agent2',
         environment: 'lab',
       }
@@ -78,25 +78,25 @@ describe('InMemoryRoutesRepository', () => {
   describe('addRoute', () => {
     it('should add a route', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
 
       await repository.addRoute(route)
-      const result = await repository.findByChannelId('5491155551234')
+      const result = await repository.findByChannelId('test-channel-123')
 
       expect(result).toEqual(route)
     })
 
     it('should overwrite existing route with same channelId', async () => {
       const route1: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent1',
         environment: 'lab',
       }
       const route2: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent2',
         environment: 'prod',
       }
@@ -104,13 +104,13 @@ describe('InMemoryRoutesRepository', () => {
       await repository.addRoute(route1)
       await repository.addRoute(route2)
 
-      const result = await repository.findByChannelId('5491155551234')
+      const result = await repository.findByChannelId('test-channel-123')
       expect(result).toEqual(route2)
     })
 
     it('should handle route with config', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
         config: {
@@ -120,7 +120,7 @@ describe('InMemoryRoutesRepository', () => {
       }
 
       await repository.addRoute(route)
-      const result = await repository.findByChannelId('5491155551234')
+      const result = await repository.findByChannelId('test-channel-123')
 
       expect(result).toEqual(route)
       expect(result?.config).toEqual({ timeout: 5000, retries: 3 })
@@ -135,14 +135,14 @@ describe('InMemoryRoutesRepository', () => {
 
     it('should return true and remove existing route', async () => {
       const route: Route = {
-        channelId: '5491155551234',
+        channelId: 'test-channel-123',
         agentEndpoint: 'http://localhost:8000/agent',
         environment: 'lab',
       }
 
       await repository.addRoute(route)
-      const removed = await repository.removeRoute('5491155551234')
-      const found = await repository.findByChannelId('5491155551234')
+      const removed = await repository.removeRoute('test-channel-123')
+      const found = await repository.findByChannelId('test-channel-123')
 
       expect(removed).toBe(true)
       expect(found).toBeNull()
@@ -152,12 +152,12 @@ describe('InMemoryRoutesRepository', () => {
   describe('clear', () => {
     it('should remove all routes', async () => {
       await repository.addRoute({
-        channelId: '5491111111111',
+        channelId: 'test-channel-111',
         agentEndpoint: 'http://localhost:8000/agent1',
         environment: 'lab',
       })
       await repository.addRoute({
-        channelId: '5492222222222',
+        channelId: 'test-channel-222',
         agentEndpoint: 'http://localhost:8000/agent2',
         environment: 'lab',
       })
@@ -178,20 +178,20 @@ describe('InMemoryRoutesRepository', () => {
       expect(repository.getRouteCount()).toBe(0)
 
       await repository.addRoute({
-        channelId: '5491111111111',
+        channelId: 'test-channel-111',
         agentEndpoint: 'http://localhost:8000/agent1',
         environment: 'lab',
       })
       expect(repository.getRouteCount()).toBe(1)
 
       await repository.addRoute({
-        channelId: '5492222222222',
+        channelId: 'test-channel-222',
         agentEndpoint: 'http://localhost:8000/agent2',
         environment: 'lab',
       })
       expect(repository.getRouteCount()).toBe(2)
 
-      await repository.removeRoute('5491111111111')
+      await repository.removeRoute('test-channel-111')
       expect(repository.getRouteCount()).toBe(1)
     })
   })
