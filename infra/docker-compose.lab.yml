@@ -82,8 +82,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Debug mode
-      - WA2AI_DEBUG=${WA2AI_DEBUG:-false}
+      # Debug mode (enabled by default in lab environment)
+      - WA2AI_DEBUG=${WA2AI_DEBUG:-true}
       # Server port
       - WA2AI_PORT=3000
       # Evolution API configuration

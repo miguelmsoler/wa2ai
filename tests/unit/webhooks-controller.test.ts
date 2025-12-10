@@ -54,13 +54,23 @@ describe('WebhooksController', () => {
     mockApp = {
       post: vi.fn((route: string, handler: any) => {
         if (route === '/webhooks/whatsapp/lab') {
-          // Store handler for testing
           ;(mockApp as any).labHandler = handler
+        } else if (route === '/api/routes') {
+          ;(mockApp as any).postRouteHandler = handler
         }
       }),
       get: vi.fn((route: string, handler: any) => {
         if (route === '/health') {
           ;(mockApp as any).healthHandler = handler
+        } else if (route === '/api/routes') {
+          ;(mockApp as any).getRoutesHandler = handler
+        } else if (route === '/api/routes/:channelId') {
+          ;(mockApp as any).getRouteHandler = handler
+        }
+      }),
+      delete: vi.fn((route: string, handler: any) => {
+        if (route === '/api/routes/:channelId') {
+          ;(mockApp as any).deleteRouteHandler = handler
         }
       }),
     } as unknown as FastifyInstance
@@ -432,7 +442,11 @@ describe('QR Code Endpoints', () => {
 
     // Mock FastifyInstance with handlers storage
     mockApp = {
-      post: vi.fn(),
+      post: vi.fn((route: string, handler: any) => {
+        if (route === '/api/routes') {
+          ;(mockApp as any).postRouteHandler = handler
+        }
+      }),
       get: vi.fn((route: string, handler: any) => {
         if (route === '/qr') {
           ;(mockApp as any).qrHandler = handler
@@ -442,6 +456,15 @@ describe('QR Code Endpoints', () => {
           ;(mockApp as any).qrImageHandler = handler
         } else if (route === '/health') {
           ;(mockApp as any).healthHandler = handler
+        } else if (route === '/api/routes') {
+          ;(mockApp as any).getRoutesHandler = handler
+        } else if (route === '/api/routes/:channelId') {
+          ;(mockApp as any).getRouteHandler = handler
+        }
+      }),
+      delete: vi.fn((route: string, handler: any) => {
+        if (route === '/api/routes/:channelId') {
+          ;(mockApp as any).deleteRouteHandler = handler
         }
       }),
     } as unknown as FastifyInstance

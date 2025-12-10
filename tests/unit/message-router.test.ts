@@ -5,7 +5,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MessageRouter } from '../../router/src/core/message-router.js'
 import { RouterService } from '../../router/src/core/router-service.js'
-import { AgentClient } from '../../router/src/core/agent-client.js'
 import type { RoutesRepository } from '../../router/src/core/router-service.js'
 import type { IncomingMessage, Route } from '../../router/src/core/models.js'
 import type { AgentResponse } from '../../router/src/core/agent-client.js'

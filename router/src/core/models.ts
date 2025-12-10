@@ -47,6 +47,8 @@ export interface Route {
   agentEndpoint: string
   /** Environment (lab or prod) */
   environment: 'lab' | 'prod'
+  /** Optional regular expression to filter messages by text content */
+  regexFilter?: string
   /** Additional route configuration */
   config?: Record<string, unknown>
 }

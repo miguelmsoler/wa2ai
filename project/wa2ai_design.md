@@ -1,204 +1,256 @@
-# WhatsApp ↔ ADK Agents Integration Project
+# WhatsApp ↔ AI Agents Integration Project
 
-This document describes the architecture in **two phases** (Laboratory and Production) to connect AI agents developed in ADK with WhatsApp through an intelligent router and interchangeable providers.
+Gateway that connects WhatsApp with AI agents (ADK or others), enabling message routing based on configurable rules.
 
 ---
 
-## 1. General Objective
+## 1. Objective
+
 Enable development, testing, and deployment of AI agents connected to WhatsApp through:
-- A **laboratory** environment based on unofficial technologies (Evolution API + Baileys).
-- A **production** environment based on the **official WhatsApp Cloud API**.
-- A decoupled **router** that decides which agent processes each message.
-- An architecture that allows moving an agent from *lab → prod* without modifying code.
+- **Laboratory environment**: Unofficial technologies (Evolution API or Baileys direct connection)
+- **Production environment**: Official WhatsApp Cloud API
+- **Decoupled router**: Routes messages to appropriate agents without coupling to WhatsApp provider
+- **Seamless migration**: Move agents from lab → prod by changing routes only
 
 ---
 
-## 2. Main Components
-### 2.1 WhatsApp Provider
-Layer that abstracts interaction with WhatsApp.
-- **Lab:** Evolution API (unofficial, Baileys) or Baileys directly.
-- **Prod:** WhatsApp Cloud API (official) or Evolution API configured as a facade.
+## 2. Architecture Overview
 
-There are three provider implementations:
-- `EvolutionProvider` - Uses Evolution API as intermediary (lab)
-- `BaileysProvider` - Uses Baileys library directly (lab, no Evolution API dependency)
-- `CloudApiProvider` - Uses official WhatsApp Cloud API (prod)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        WhatsApp                              │
+└──────────────┬──────────────────────────────┬────────────────┘
+               │                              │
+      ┌────────▼────────┐          ┌────────▼────────┐
+      │  Lab Provider   │          │  Prod Provider  │
+      │  (Evolution API │          │  (Cloud API)    │
+      │   or Baileys)   │          │                 │
+      └────────┬────────┘          └────────┬────────┘
+               │                              │
+               └──────────┬───────────────────┘
+                          │
+                  ┌───────▼────────┐
+                  │  wa2ai Router  │
+                  │  (Message      │
+                  │   Routing)     │
+                  └───────┬────────┘
+                          │
+                  ┌───────▼────────┐
+                  │  AI Agents     │
+                  │  (ADK/HTTP)    │
+                  └────────────────┘
+```
 
-### 2.2 Router
-Node.js/TypeScript service that:
-- Receives webhooks from WhatsApp.
-- Normalizes messages.
-- Determines which agent should respond.
-- Sends the response to the corresponding provider (lab or prod).
+### Key Components
 
-### 2.3 ADK Agents
-Independent services (Python/ADK), exposed via HTTP, that receive messages and return responses without knowing WhatsApp details.
+1. **WhatsApp Providers**: Abstract layer for WhatsApp communication
+   - **Lab**: Evolution API (webhook-based) or Baileys (direct WebSocket)
+   - **Prod**: WhatsApp Cloud API (webhook-based)
+
+2. **Router (wa2ai)**: Node.js/TypeScript service that:
+   - Receives messages from WhatsApp providers
+   - Normalizes messages into domain model
+   - Routes messages to appropriate agents based on channel ID
+   - Returns agent responses to WhatsApp
+
+3. **AI Agents**: Independent HTTP services that process messages and return responses
 
 ---
 
-## 3. Phase 1 – Laboratory
-### 3.1 Services to deploy
+## 3. Phase 1: Laboratory
 
-**Option A: Using Evolution API (original approach)**
-1. **postgres**
-   - PostgreSQL 16 database container.
-   - Stores Evolution API data (instances, messages, contacts, chats, etc.).
-   - Required by Evolution API v2.3.7.
+### 3.1 Provider Options
 
-2. **evolution-api-lab**
-   - Docker container (Evolution API v2.3.7).
-   - Connected to PostgreSQL database.
-   - Associated with a test WhatsApp number.
+**Option A: Evolution API**
+- Requires PostgreSQL database
+- Webhook-based message delivery
+- Multi-instance support
+- More complex setup
 
-3. **wa2ai-lab**
-   - Docker container or Cloud Run.
-   - Configured to use `EvolutionProvider`.
+**Option B: Baileys Direct Connection** ⭐ (Current implementation)
+- No external dependencies
+- Direct WebSocket connection
+- Lower latency (direct routing)
+- Simpler architecture for single-instance deployments
 
-4. **ADK Agents (lab)**
-   - Independent deployment.
+### 3.2 Message Flow
 
-**Option B: Using Baileys directly (alternative approach)**
-1. **wa2ai-lab**
-   - Docker container or Cloud Run.
-   - Configured to use `BaileysProvider`.
-   - Directly manages WhatsApp connection using Baileys library.
-   - No Evolution API or PostgreSQL dependency.
+**Evolution API Flow:**
+```
+WhatsApp → Evolution API → HTTP Webhook → wa2ai → Agent → Response → WhatsApp
+```
 
-2. **ADK Agents (lab)**
-   - Independent deployment.
+**Baileys Direct Routing Flow:**
+```
+WhatsApp → Baileys WebSocket → wa2ai (direct callback) → Agent → Response → WhatsApp
+```
 
-### 3.2 Flow
-
-**Option A: Using Evolution API**
-1. User sends message to lab number.
-2. Evolution API → webhook → wa2ai (lab).
-3. wa2ai determines agent.
-4. wa2ai sends response via Evolution API.
-
-**Option B: Using Baileys directly**
-1. User sends message to lab number.
-2. Baileys (within wa2ai) receives message directly.
-3. wa2ai determines agent.
-4. wa2ai sends response via Baileys directly.
+**Direct Routing Benefits:**
+- No HTTP webhook overhead
+- Lower latency
+- Simpler architecture
+- Single-instance friendly
 
 ### 3.3 Infrastructure
 
-**Option A: Using Evolution API**
-Suggested file `docker-compose.lab.yml` with:
-- postgres (PostgreSQL database)
-- evolution-api-lab
-- wa2ai-lab
+**Option A (Evolution API):**
+- PostgreSQL container
+- Evolution API container
+- wa2ai container
 
-**Option B: Using Baileys directly**
-Suggested file `docker-compose.lab.yml` with:
-- wa2ai-lab (no Evolution API or PostgreSQL needed)
-
-The router can use either `EvolutionProvider` or `BaileysProvider` for lab environment, and already includes the interface for future `prod` (`CloudApiProvider`).
+**Option B (Baileys):**
+- wa2ai container only
 
 ---
 
-## 4. Phase 2 – Production
-### 4.1 Services to deploy
-1. **wa2ai-prod**
-   - New router instance.
-   - Uses `CloudApiProvider`.
+## 4. Phase 2: Production
 
-2. **WhatsApp Cloud API**
-   - External service provided by Meta.
-   - Webhook configured pointing to `wa2ai-prod`.
+### 4.1 Services
 
-3. Evolution API (lab) and wa2ai (lab) continue to exist.
+1. **wa2ai-prod**: Router instance using Cloud API provider
+2. **WhatsApp Cloud API**: Official Meta service with webhook configured
+3. **Lab environment**: Continues to exist independently
 
-### 4.2 Production flow
-1. User writes to business number.
-2. Cloud API → webhook → wa2ai (prod).
-3. wa2ai (prod) calls ADK agent.
-4. wa2ai (prod) sends response via Cloud API.
+### 4.2 Flow
 
-### 4.3 Agent promotion
-Agents move from *lab → prod* by modifying only the router **routes**:
-- Without changing agent code.
-- Without changing the Provider.
-- Without modifying Router logic.
-
-Typical route tables:
-
-**Lab:**
 ```
-channel_id: grupo-test
-agent_endpoint: https://agents/support
-env: lab
+WhatsApp (Business Number) → Cloud API → HTTP Webhook → wa2ai-prod → Agent → Response → WhatsApp
 ```
 
-**Prod:**
-```
-channel_id: cliente-X
-agent_endpoint: https://agents/support
-env: prod
-```
+### 4.3 Agent Promotion
+
+Agents move from lab → prod by updating routes only:
+- No agent code changes
+- No provider changes
+- No router logic changes
+
+**Example Routes:**
+- Lab: `channel_id: grupo-test` → `agent_endpoint: https://agents/support`
+- Prod: `channel_id: cliente-X` → `agent_endpoint: https://agents/support`
 
 ---
 
-## 5. Final Architecture
-```
-             WhatsApp (Lab)                     WhatsApp (Prod - Cloud API)
-                   |                                      |
-          Evolution API (lab)                       Meta Webhooks
-                   |                                      |
-             wa2ai (lab) --------------------- wa2ai (prod)
-                   \______________________  ___________________/
-                                      \/
-                                  ADK Agents
-```
+## 5. Architectural Decisions
+
+### 5.1 Direct Routing (Baileys)
+
+**Decision**: Use direct callback-based routing for Baileys connections instead of HTTP webhooks.
+
+**Rationale**:
+- Lower latency (no HTTP overhead)
+- Simpler architecture
+- Better performance for single-instance deployments
+
+**Implementation**: Messages flow directly from Baileys WebSocket → MessageRouter → Agent, bypassing HTTP webhook layer.
+
+**Note**: Evolution API and Cloud API continue using HTTP webhooks (appropriate for their architecture).
+
+### 5.2 Route Management Separation
+
+**Decision**: Separate route management API from webhook endpoints.
+
+**Rationale**:
+- Clear separation of concerns (configuration vs. message flow)
+- Easier maintenance and extension
+- Follows Single Responsibility Principle
+
+**Implementation**: 
+- `webhooks-controller.ts`: Handles incoming messages and QR endpoints
+- `routes-controller.ts`: Handles route CRUD operations (`/api/routes`)
+
+### 5.3 Clean Architecture
+
+**Decision**: Follow Clean Architecture principles with clear layer boundaries.
+
+**Layers**:
+- **Core**: Domain models, business rules, interfaces (no dependencies)
+- **Providers**: WhatsApp provider implementations (depend on core only)
+- **Controllers**: HTTP entry points (depend on providers and core)
+
+**Benefits**:
+- Testability
+- Maintainability
+- Provider interchangeability
 
 ---
 
-## 6. Repository Structure
+## 6. Core Components
+
+### 6.1 Message Routing
+
+- **MessageRouter**: Orchestrates routing flow (finds route → sends to agent → returns response)
+- **RouterService**: Finds routes for messages using RoutesRepository
+  - Supports regex filtering: Routes can include a `regexFilter` field to filter messages by text content
+  - Uses JavaScript RegExp (ECMAScript standard) for pattern matching
+  - If regex filter is present, only messages matching the pattern are routed
+- **AgentClient**: HTTP client for agent communication (timeout handling, error handling)
+
+### 6.2 Route Storage
+
+- **RoutesRepository**: Abstraction for route storage
+- **InMemoryRoutesRepository**: Current implementation (in-memory)
+- **Route Model**: Contains `channelId`, `agentEndpoint`, `environment`, and optional `regexFilter`
+- **Future**: Database-backed implementation
+
+**Route Filtering:**
+Routes support an optional `regexFilter` field that uses **JavaScript RegExp** syntax (ECMAScript standard) to filter messages by text content. Examples:
+- `"^Test"` - Only route messages starting with "Test"
+- `".*help.*"` - Only route messages containing "help"
+- `"^[0-9]+$"` - Only route messages containing only digits
+
+If a route has a `regexFilter`, the message text must match the pattern for the route to be selected. Invalid regex patterns are logged as errors and the route is treated as non-matching for safety.
+
+### 6.3 Message Handling
+
+- **BaileysConnectionService**: Manages Baileys WebSocket connection
+- **Message Adapters**: Normalize provider-specific messages to domain model
+- **Message Handlers**: Process messages and return responses
+
+---
+
+## 7. Repository Structure
+
 ```
 wa2ai/
-  README.md
-  project/
-    wa2ai_design.md
-    wa2ai_phase_1_gantt.md
-    wa2ai_phase_1_task_breakdown.md
-  docs/
-    phase1-lab.md
-    phase2-prod.md
-
-  router/
-    src/
-      index.ts
-      webhooks-controller.ts
-      providers/
-        evolution-provider.ts
-        baileys-provider.ts
-        cloud-provider.ts
-      core/
-        router-service.ts
-        routes-repo.ts
-        models.ts
-
-  infra/
-    docker-compose.lab.yml
-    docker-compose.prod.yml
+├── router/src/
+│   ├── index.ts                    # Application entry point
+│   ├── webhooks-controller.ts      # Webhook endpoints
+│   ├── routes-controller.ts        # Route management API
+│   ├── providers/                  # WhatsApp providers
+│   │   ├── baileys-connection.ts
+│   │   ├── evolution-provider.ts
+│   │   └── cloud-provider.ts
+│   └── core/                       # Domain layer
+│       ├── models.ts
+│       ├── router-service.ts
+│       ├── message-router.ts
+│       ├── agent-client.ts
+│       └── routes-repository.ts
+├── infra/                          # Infrastructure configs
+├── tests/                          # Test suites
+└── docs/                           # Technical documentation
 ```
 
-**Note:** 
-- `project/` contains project management documentation (GANTT, task breakdowns, design documents).
-- `docs/` contains technical solution documentation (architecture, API references, operation guides).
+---
+
+## 8. Benefits
+
+- **Safe development**: Test without affecting production numbers
+- **Easy migration**: Move agents to production by changing routes only
+- **Simple stack**: Minimal dependencies, easy to operate
+- **Clear separation**: Messaging, routing, and agent logic are decoupled
+- **Provider flexibility**: Switch between providers without code changes
 
 ---
 
-## 7. Benefits
-- Safe development without affecting real numbers.
-- Transparent migration of agents to production.
-- Simple stack to operate and extend.
-- Firm separation between messaging, routing, and agent logic.
+## 9. Next Steps
+
+- [ ] Implement persistent route storage (database)
+- [ ] Add route validation and error handling
+- [ ] Integrate first ADK agent
+- [ ] Complete end-to-end testing
+- [ ] Prepare production deployment
 
 ---
 
-## 8. Next steps
-- Define `routes` schema (DB or file).
-- Specify intermediate payloads.
-- Create Docker images for wa2ai (lab) and wa2ai (prod).
-- Integrate the first ADK agent.
+**Note**: For detailed technical documentation, see `docs/phase1-lab.md` and `docs/phase2-prod.md`.

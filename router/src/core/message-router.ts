@@ -90,16 +90,22 @@ export class MessageRouter {
     const route = await this.routerService.routeMessage(message)
 
     if (!route) {
+      // Log complete message information when DEBUG is enabled
       if (isDebugMode()) {
-        logger.debug('[MessageRouter] No route found', {
+        logger.debug('[MessageRouter] No route found - complete message details', {
           messageId: message.id,
+          from: message.from,
           channelId: message.channelId,
+          text: message.text,
+          timestamp: message.timestamp.toISOString(),
+          metadata: message.metadata,
         })
       }
 
       logger.warn('[MessageRouter] No route found for message', {
         messageId: message.id,
         channelId: message.channelId,
+        from: message.from,
       })
 
       return {
@@ -109,9 +115,13 @@ export class MessageRouter {
     }
 
     if (isDebugMode()) {
-      logger.debug('[MessageRouter] Route found', {
+      logger.debug('[MessageRouter] Route found - complete message details', {
         messageId: message.id,
+        from: message.from,
         channelId: message.channelId,
+        text: message.text,
+        timestamp: message.timestamp.toISOString(),
+        metadata: message.metadata,
         agentEndpoint: route.agentEndpoint,
         environment: route.environment,
       })

@@ -7,6 +7,7 @@
 
 import fastify from 'fastify'
 import { registerWebhooks } from './webhooks-controller.js'
+import { registerRouteEndpoints } from './routes-controller.js'
 import { logger } from './core/logger.js'
 import { getBaileysConnection } from './providers/baileys-connection.js'
 import { InMemoryRoutesRepository } from './core/routes-repository.js'
@@ -20,8 +21,11 @@ const server = fastify({
   logger: DEBUG
 })
 
-// Register webhook endpoints
+// Register basic webhook endpoints
 registerWebhooks(server)
+
+// Global routes repository instance (accessible for API endpoints)
+let globalRoutesRepository: InMemoryRoutesRepository | null = null
 
 /**
  * Initializes the routing system.
@@ -36,10 +40,10 @@ function initializeRouting(): MessageRouter {
   }
 
   // Create routes repository (in-memory for now)
-  const routesRepository = new InMemoryRoutesRepository()
+  globalRoutesRepository = new InMemoryRoutesRepository()
 
   // Create router service
-  const routerService = new RouterService(routesRepository)
+  const routerService = new RouterService(globalRoutesRepository)
 
   // Create message router
   const messageRouter = new MessageRouter(routerService, {
@@ -48,11 +52,19 @@ function initializeRouting(): MessageRouter {
     },
   })
 
+  // Register route management endpoints BEFORE server starts listening
+  if (globalRoutesRepository) {
+    registerRouteEndpoints(server, globalRoutesRepository)
+    if (DEBUG) {
+      logger.debug('[Index] Route management endpoints registered')
+    }
+  }
+
   // TODO: Load routes from configuration file or database
   // For now, routes can be added programmatically or via API endpoints
 
   logger.info('[Index] Routing system initialized', {
-    routeCount: routesRepository.getRouteCount(),
+    routeCount: globalRoutesRepository.getRouteCount(),
   })
 
   return messageRouter
@@ -69,6 +81,13 @@ async function initializeBaileysConnection(messageRouter: MessageRouter): Promis
   const connection = getBaileysConnection({
     authDir: process.env.WA2AI_BAILEYS_AUTH_DIR || './auth_info_baileys',
     printQRInTerminal: DEBUG,
+    // Allow messages from self (fromMe:true) for testing purposes
+    messageFilter: {
+      ignoreFromMe: false,
+      ignoreGroups: false,
+      ignoreStatusBroadcast: true,
+      ignoreJids: [],
+    },
   })
 
   try {
@@ -88,6 +107,9 @@ async function initializeBaileysConnection(messageRouter: MessageRouter): Promis
   }
 }
 
+// Initialize routing system BEFORE server starts listening
+const messageRouter = initializeRouting()
+
 // Start server
 server.listen({ port: PORT, host: '0.0.0.0' }, async (err, address) => {
   if (err) {
@@ -103,9 +125,6 @@ server.listen({ port: PORT, host: '0.0.0.0' }, async (err, address) => {
     port: PORT,
     debugMode: DEBUG,
   })
-
-  // Initialize routing system
-  const messageRouter = initializeRouting()
 
   // Initialize Baileys connection with direct routing after server starts
   await initializeBaileysConnection(messageRouter)
