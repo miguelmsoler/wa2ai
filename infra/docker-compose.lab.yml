@@ -1,16 +1,17 @@
 services:
-  # PostgreSQL database (only needed if WA2AI_PROVIDER=evolution)
+  # PostgreSQL database
+  # Used by both Evolution API (when WA2AI_PROVIDER=evolution) and wa2ai routes persistence
   postgres:
     image: postgres:16-alpine
     container_name: evolution-postgres
-    profiles:
-      - evolution
     environment:
       - POSTGRES_DB=evolution_lab
       - POSTGRES_USER=evolution
       - POSTGRES_PASSWORD=evolution_pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Mount schema initialization script
+      - ./schema:/docker-entrypoint-initdb.d
     networks:
       - wa2ai-network
     restart: unless-stopped
@@ -102,10 +103,12 @@ services:
       - WA2AI_BAILEYS_AUTH_DIR=/app/auth_info_baileys
     volumes:
       - baileys_auth:/app/auth_info_baileys
-    # When using Evolution API, wait for evolution-api-lab to be ready
-    # When using Baileys, this dependency is not needed but Docker Compose requires it
-    # The wrapper script handles this by only starting evolution-api-lab when needed
+    # Dependencies:
+    # - postgres: Always required for routes persistence
+    # - evolution-api-lab: Only needed when WA2AI_PROVIDER=evolution (optional dependency)
     depends_on:
+      postgres:
+        condition: service_healthy
       evolution-api-lab:
         condition: service_started
         required: false

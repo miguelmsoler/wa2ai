@@ -205,6 +205,8 @@ Backend environment variables are managed through `.env` files in the project ro
 - `WA2AI_CLOUD_API_PHONE_NUMBER_ID` – Phone number ID for WhatsApp Cloud API (for prod mode, Phase 2).
 - `WA2AI_TEST_CHANNEL_ID` (optional) – Channel ID for testing purposes (your WhatsApp number without `@s.whatsapp.net`). Used for e2e testing and development workflows.
 
+**Note:** PostgreSQL connection details are managed internally by `docker-compose.lab.yml` and are not exposed as environment variables. When running inside Docker, the `PostgresRoutesRepository` will use the service name `postgres` and credentials defined in the compose file.
+
 Add new backend environment variables to `.env.example` with clear documentation about their purpose and required format.
 
 ### Frontend environment variables (future)
