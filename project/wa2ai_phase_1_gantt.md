@@ -74,10 +74,10 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 
 ## 🗓️ Day 5 — wa2ai implementation: Controller + Config (4–5 h)
 
-- Create `webhooks-controller.ts` endpoint and parsing (1–1.5 h).
-- Create `index.ts` + env vars reading (1 h).
-- wa2ai smoke tests (1–1.5 h).
-- Validate internal flow using agent mocks.
++ Create `webhooks-controller.ts` endpoint and parsing (1–1.5 h).
++ Create `index.ts` + env vars reading (1 h).
++ wa2ai smoke tests (1–1.5 h).
++ Validate internal flow using agent mocks.
 
 ---
 
