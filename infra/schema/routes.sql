@@ -11,6 +11,12 @@ CREATE TABLE IF NOT EXISTS routes (
   -- Environment identifier (e.g., 'lab', 'prod')
   environment VARCHAR(50) NOT NULL DEFAULT 'lab',
   
+  -- Optional regular expression filter for message text content
+  regex_filter TEXT,
+  
+  -- Additional route configuration (stored as JSON)
+  config JSONB,
+  
   -- Timestamps for tracking
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -43,5 +49,7 @@ COMMENT ON TABLE routes IS 'Stores routing rules mapping channel IDs to agent en
 COMMENT ON COLUMN routes.channel_id IS 'WhatsApp channel identifier (phone number without @s.whatsapp.net)';
 COMMENT ON COLUMN routes.agent_endpoint IS 'URL of the AI agent endpoint where messages should be forwarded';
 COMMENT ON COLUMN routes.environment IS 'Environment identifier (lab, prod, etc.)';
+COMMENT ON COLUMN routes.regex_filter IS 'Optional regular expression to filter messages by text content. Only messages matching this regex will be routed.';
+COMMENT ON COLUMN routes.config IS 'Additional route configuration stored as JSON. Can contain arbitrary key-value pairs for route-specific settings.';
 COMMENT ON COLUMN routes.created_at IS 'Timestamp when the route was created';
 COMMENT ON COLUMN routes.updated_at IS 'Timestamp when the route was last updated';

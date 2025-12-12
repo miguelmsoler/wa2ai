@@ -41,6 +41,30 @@ export function registerRouteEndpoints(
       })
     }
 
+    // Validate regexFilter if provided
+    if (request.body.regexFilter) {
+      try {
+        new RegExp(request.body.regexFilter)
+      } catch (error) {
+        logger.warn('[RoutesController] Invalid regex pattern provided', {
+          channelId: request.body.channelId,
+          regexFilter: request.body.regexFilter,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        reply.code(400).send({
+          success: false,
+          error: `Invalid regex pattern: ${error instanceof Error ? error.message : String(error)}`,
+          code: 'INVALID_REGEX_PATTERN',
+          details: {
+            field: 'regexFilter',
+            value: request.body.regexFilter,
+            message: error instanceof Error ? error.message : String(error),
+          },
+        })
+        return
+      }
+    }
+
     try {
       await routesRepository.addRoute(request.body)
 
@@ -155,6 +179,30 @@ export function registerRouteEndpoints(
         newChannelId,
         agentEndpoint: request.body.agentEndpoint,
       })
+    }
+
+    // Validate regexFilter if provided
+    if (request.body.regexFilter) {
+      try {
+        new RegExp(request.body.regexFilter)
+      } catch (error) {
+        logger.warn('[RoutesController] Invalid regex pattern provided', {
+          oldChannelId,
+          regexFilter: request.body.regexFilter,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        reply.code(400).send({
+          success: false,
+          error: `Invalid regex pattern: ${error instanceof Error ? error.message : String(error)}`,
+          code: 'INVALID_REGEX_PATTERN',
+          details: {
+            field: 'regexFilter',
+            value: request.body.regexFilter,
+            message: error instanceof Error ? error.message : String(error),
+          },
+        })
+        return
+      }
     }
 
     try {

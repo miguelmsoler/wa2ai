@@ -13,7 +13,7 @@ import type { WhatsAppProvider } from './core/whatsapp-provider.js'
 import { getBaileysConnection } from './providers/baileys-connection.js'
 import { BaileysProvider } from './providers/baileys-provider.js'
 import { EvolutionProvider } from './providers/evolution-provider.js'
-import { InMemoryRoutesRepository } from './core/routes-repository.js'
+import { PostgresRoutesRepository } from './infra/postgres-routes-repository.js'
 import { RouterService } from './core/router-service.js'
 import { MessageRouter } from './core/message-router.js'
 import { HttpAgentClient } from './infra/http-agent-client.js'
@@ -30,7 +30,7 @@ const server = fastify({
 // Webhook endpoints will be registered after routing system is initialized
 
 // Global routes repository instance (accessible for API endpoints)
-let globalRoutesRepository: InMemoryRoutesRepository | null = null
+let globalRoutesRepository: PostgresRoutesRepository | null = null
 
 /**
  * Creates the appropriate WhatsApp provider based on WA2AI_PROVIDER.
@@ -76,8 +76,9 @@ function initializeRouting(): MessageRouter {
     logger.debug('[Index] Initializing routing system')
   }
 
-  // Create routes repository (in-memory for now)
-  globalRoutesRepository = new InMemoryRoutesRepository()
+  // Create routes repository (PostgreSQL-backed for persistence)
+  // Uses default configuration from docker-compose (postgres service)
+  globalRoutesRepository = new PostgresRoutesRepository()
 
   // Create router service
   const routerService = new RouterService(globalRoutesRepository)
@@ -119,8 +120,8 @@ function initializeRouting(): MessageRouter {
     }
   }
 
-  // TODO: Load routes from configuration file or database
-  // For now, routes can be added programmatically or via API endpoints
+  // Routes are now persisted in PostgreSQL database
+  // Routes can be added via API endpoints and will persist across container restarts
 
   logger.info('[Index] Routing system initialized', {
     routeCount: globalRoutesRepository.getRouteCount(),

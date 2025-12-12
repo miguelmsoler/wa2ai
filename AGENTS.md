@@ -526,7 +526,25 @@ When AI agents are used for development assistance:
      - Versioning, pagination, filtering
    - When implementing new API endpoints, consult `refs/` first for RESTful API documentation to ensure consistency with project standards.
 
-10. **Git operations**
+10. **Database schema and model mapping**
+    - **CRITICAL: Database schemas must exactly match domain models.**
+    - Every table in the database must map 1:1 to a domain model in `router/src/core/models.ts`.
+    - Every field in a domain model must have a corresponding column in the database table.
+    - Every column in a database table must map to a field in the domain model (except for technical columns like `created_at`, `updated_at`, which are acceptable for audit purposes).
+    - When adding a new field to a domain model, you MUST:
+      1. Update the corresponding database schema SQL file in `infra/schema/`
+      2. Update the repository implementation (e.g., `PostgresRoutesRepository`) to read/write the new field
+      3. Update the `mapRowToRoute` (or equivalent mapping method) to include the new field
+      4. Run database migrations or update the schema initialization script
+    - When creating a new table, ensure:
+      1. The domain model exists first in `router/src/core/models.ts`
+      2. The schema SQL file in `infra/schema/` matches the model exactly
+      3. The repository implementation maps all fields correctly
+    - **Never create a database table or column that doesn't map to a domain model field.**
+    - **Never add a field to a domain model without updating the database schema.**
+    - Schema files are located in `infra/schema/` and are automatically applied when PostgreSQL initializes.
+
+11. **Git operations**
     - **Never make commits without explicit user request.** Only commit when the user explicitly asks for it.
     - Do not push to remote repositories unless explicitly requested.
     - Do not modify git configuration.

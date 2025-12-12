@@ -64,11 +64,11 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 + Implement `RouterService.onIncomingMessage` (2.5–3 h).
 + Process agent response and send message via provider (1 h).
 + Create PostgreSQL schema for routes table (0.5 h).
-- Implement `PostgresRoutesRepository` implementing `RoutesRepository` interface (1–1.5 h).
-- Update `docker-compose.lab.yml` to add PostgreSQL dependency for `wa2ai-lab` (0.2 h).
-- Update `index.ts` to use `PostgresRoutesRepository` instead of `InMemoryRoutesRepository` (0.3 h).
-- Add PostgreSQL connection environment variables (0.2 h).
-- Test route persistence across container restarts (0.3–0.5 h).
++ Implement `PostgresRoutesRepository` implementing `RoutesRepository` interface (1–1.5 h).
++ Update `docker-compose.lab.yml` to add PostgreSQL dependency for `wa2ai-lab` (0.2 h).
++ Update `index.ts` to use `PostgresRoutesRepository` instead of `InMemoryRoutesRepository` (0.3 h).
+~ Add PostgreSQL connection environment variables (0.2 h). *(Anulada: la conexión se maneja internamente en Docker, PostgreSQL no es accesible desde fuera del contenedor)*
++ Test route persistence across container restarts (0.3–0.5 h).
 
 ---
 

@@ -30,10 +30,12 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "fastify": "^4.26.0",
+    "pg": "^8.16.3",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@types/pg": "^8.16.0",
     "@types/qrcode": "^1.5.6",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
