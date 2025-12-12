@@ -56,3 +56,33 @@ export interface AgentClient {
   sendMessage(agentEndpoint: string, message: IncomingMessage): Promise<AgentResponse>
 }
 
+/**
+ * Configuration for creating an ADK agent client.
+ */
+export interface AdkClientConfig {
+  /** ADK agent name (directory name, not constructor name) */
+  appName: string
+  /** Base URL of ADK server (e.g., 'http://localhost:8000') */
+  baseUrl: string
+  /** Optional: Custom session ID generator. Default uses from_channelId format */
+  sessionIdGenerator?: (message: IncomingMessage) => string
+  /** Request timeout in milliseconds */
+  timeout?: number
+}
+
+/**
+ * Factory interface for creating agent clients.
+ * 
+ * This factory allows creating agent clients with specific configurations
+ * without coupling the core layer to infrastructure implementations.
+ */
+export interface AgentClientFactory {
+  /**
+   * Creates an ADK agent client with the specified configuration.
+   * 
+   * @param config - ADK client configuration
+   * @returns A configured AgentClient instance
+   */
+  createAdkClient(config: AdkClientConfig): AgentClient
+}
+

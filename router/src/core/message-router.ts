@@ -14,7 +14,7 @@
 import type { IncomingMessage } from './models.js'
 import type { MessageHandlerResult } from './message-handler.js'
 import type { WhatsAppProvider } from './whatsapp-provider.js'
-import type { AgentClient } from './agent-client.js'
+import type { AgentClientFactory } from './agent-client.js'
 import { RouterService } from './router-service.js'
 import { logger, isDebugMode } from './logger.js'
 
@@ -24,6 +24,8 @@ import { logger, isDebugMode } from './logger.js'
 export interface MessageRouterConfig {
   /** WhatsApp provider for sending responses back to users (required) */
   whatsappProvider: WhatsAppProvider
+  /** Factory for creating agent clients (required) */
+  agentClientFactory: AgentClientFactory
 }
 
 /**
@@ -39,7 +41,11 @@ export interface MessageRouterConfig {
  * @example
  * ```typescript
  * const routerService = new RouterService(routesRepository)
- * const messageRouter = new MessageRouter(routerService, agentClient, { whatsappProvider })
+ * const agentClientFactory = new HttpAgentClientFactory()
+ * const messageRouter = new MessageRouter(routerService, {
+ *   whatsappProvider,
+ *   agentClientFactory,
+ * })
  * 
  * const result = await messageRouter.routeMessage(incomingMessage)
  * // Response is automatically sent back via WhatsApp provider
@@ -47,17 +53,19 @@ export interface MessageRouterConfig {
  */
 export class MessageRouter {
   private whatsappProvider: WhatsAppProvider
+  private agentClientFactory: AgentClientFactory
 
   constructor(
     private routerService: RouterService,
-    _agentClient: AgentClient, // Not used - kept for interface compatibility
     config: MessageRouterConfig
   ) {
     this.whatsappProvider = config.whatsappProvider
+    this.agentClientFactory = config.agentClientFactory
 
     if (isDebugMode()) {
       logger.debug('[MessageRouter] Initialized', {
         hasRouterService: !!routerService,
+        hasAgentClientFactory: !!config.agentClientFactory,
       })
     }
   }
@@ -144,15 +152,11 @@ export class MessageRouter {
         }
       }
 
-      // Create ADK client for this call
-      // TODO: In the future, support other agent types via route.config.agentType
-      const { HttpAgentClient } = await import('../infra/http-agent-client.js')
-      const adkClient = new HttpAgentClient({
+      // Create ADK client using factory (avoids direct dependency on infra layer)
+      const adkClient = this.agentClientFactory.createAdkClient({
+        appName: adkConfig.appName,
+        baseUrl: adkConfig.baseUrl || route.agentEndpoint,
         timeout: 30000,
-        adk: {
-          appName: adkConfig.appName,
-          baseUrl: adkConfig.baseUrl || route.agentEndpoint,
-        },
       })
 
       const agentResponse = await adkClient.sendMessage(

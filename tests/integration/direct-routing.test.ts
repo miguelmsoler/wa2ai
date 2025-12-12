@@ -9,7 +9,7 @@ import { InMemoryRoutesRepository } from '../../router/src/core/routes-repositor
 import { RouterService } from '../../router/src/core/router-service.js'
 import { MessageRouter } from '../../router/src/core/message-router.js'
 import { BaileysProvider } from '../../router/src/providers/baileys-provider.js'
-import { HttpAgentClient } from '../../router/src/infra/http-agent-client.js'
+import { HttpAgentClientFactory } from '../../router/src/infra/agent-client-factory.js'
 import { setupBaileysDirectRouting } from '../../router/src/providers/baileys-routing.js'
 import { getBaileysConnection } from '../../router/src/providers/baileys-connection.js'
 import type { IncomingMessage, Route } from '../../router/src/core/models.js'
@@ -50,24 +50,15 @@ describe('Direct Routing Integration', () => {
     routesRepository = new InMemoryRoutesRepository()
     routerService = new RouterService(routesRepository)
     
-    // Create agent client
-    const agentClient = new HttpAgentClient({
-      timeout: 30000,
-      adk: {
-        appName: 'test_agent',
-        baseUrl: 'http://localhost:8000',
-      },
-    })
+    // Create agent client factory
+    const agentClientFactory = new HttpAgentClientFactory()
     
     // Create BaileysProvider for message router
     const baileysProvider = new BaileysProvider()
-    messageRouter = new MessageRouter(
-      routerService,
-      agentClient,
-      {
-        whatsappProvider: baileysProvider,
-      }
-    )
+    messageRouter = new MessageRouter(routerService, {
+      whatsappProvider: baileysProvider,
+      agentClientFactory,
+    })
 
     fetchMock = global.fetch as ReturnType<typeof vi.fn>
     fetchMock.mockClear()

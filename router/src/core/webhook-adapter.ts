@@ -6,7 +6,7 @@
  */
 
 import type { IncomingMessage } from './models.js'
-import { logger } from './logger.js'
+import { logger, isDebugMode } from './logger.js'
 
 /**
  * Evolution API webhook payload structure.
@@ -69,10 +69,12 @@ export function normalizeEvolutionApiWebhook(
   
   // Only process messages.upsert events
   if (eventType !== 'messages.upsert') {
-    logger.debug('[WebhookAdapter] Ignoring non-message event', {
-      eventType,
-      instance,
-    })
+    if (isDebugMode()) {
+      logger.debug('[WebhookAdapter] Ignoring non-message event', {
+        eventType,
+        instance,
+      })
+    }
     return null
   }
   

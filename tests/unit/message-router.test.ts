@@ -7,7 +7,7 @@ import { MessageRouter } from '../../router/src/core/message-router.js'
 import { RouterService } from '../../router/src/core/router-service.js'
 import type { RoutesRepository } from '../../router/src/core/router-service.js'
 import type { IncomingMessage, Route } from '../../router/src/core/models.js'
-import type { AgentClient } from '../../router/src/core/agent-client.js'
+import type { AgentClient, AgentClientFactory } from '../../router/src/core/agent-client.js'
 import type { WhatsAppProvider } from '../../router/src/core/whatsapp-provider.js'
 
 // Mock fetch for ADK client
@@ -18,6 +18,7 @@ describe('MessageRouter', () => {
   let routerService: RouterService
   let messageRouter: MessageRouter
   let mockAgentClient: AgentClient
+  let mockAgentClientFactory: AgentClientFactory
   let mockWhatsAppProvider: WhatsAppProvider
 
   const mockMessage: IncomingMessage = {
@@ -42,6 +43,11 @@ describe('MessageRouter', () => {
       sendMessage: sendMessageMock,
     } as AgentClient
     
+    // Create a mock agent client factory
+    mockAgentClientFactory = {
+      createAdkClient: vi.fn().mockReturnValue(mockAgentClient),
+    } as AgentClientFactory
+    
     // Create a mock WhatsApp provider
     mockWhatsAppProvider = {
       sendMessage: vi.fn().mockResolvedValue(undefined),
@@ -49,13 +55,10 @@ describe('MessageRouter', () => {
     }
     
     // Create message router with mocked dependencies
-    messageRouter = new MessageRouter(
-      routerService,
-      mockAgentClient,
-      {
-        whatsappProvider: mockWhatsAppProvider,
-      }
-    )
+    messageRouter = new MessageRouter(routerService, {
+      whatsappProvider: mockWhatsAppProvider,
+      agentClientFactory: mockAgentClientFactory,
+    })
   })
 
   describe('routeMessage', () => {
@@ -82,38 +85,20 @@ describe('MessageRouter', () => {
         },
       }
 
-      // Mock ADK response
-      const adkResponse = [
-        {
-          content: {
-            parts: [{ text: 'Agent response' }],
-            role: 'model',
-          },
-          invocationId: 'e-test-123',
-          author: 'model',
-          actions: {
-            stateDelta: {},
-            artifactDelta: {},
-          },
-        },
-      ]
-
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => adkResponse,
-      } as Response)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        response: 'Agent response',
+      })
 
       const result = await messageRouter.routeMessage(mockMessage)
 
       expect(result.success).toBe(true)
       expect(result.response).toBe('Agent response')
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost:8000/run',
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('"app_name":"test_agent"'),
-        })
+      expect(mockAgentClientFactory.createAdkClient).toHaveBeenCalled()
+      expect(mockAgentClient.sendMessage).toHaveBeenCalledWith(
+        'http://localhost:8000',
+        mockMessage
       )
     })
 
@@ -147,7 +132,7 @@ describe('MessageRouter', () => {
       }
 
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Network error'))
+      vi.mocked(mockAgentClient.sendMessage).mockRejectedValueOnce(new Error('Network error'))
 
       const result = await messageRouter.routeMessage(mockMessage)
 
@@ -168,27 +153,11 @@ describe('MessageRouter', () => {
         },
       }
 
-      // Mock ADK response with metadata
-      const adkResponse = [
-        {
-          content: {
-            parts: [{ text: 'Response' }],
-            role: 'model',
-          },
-          invocationId: 'e-test-123',
-          author: 'model',
-          actions: {
-            stateDelta: {},
-            artifactDelta: {},
-          },
-        },
-      ]
-
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => adkResponse,
-      } as Response)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        response: 'Response',
+      })
 
       const result = await messageRouter.routeMessage(mockMessage)
 
@@ -211,27 +180,11 @@ describe('MessageRouter', () => {
         },
       }
 
-      // Mock ADK response
-      const adkResponse = [
-        {
-          content: {
-            parts: [{ text: 'Agent response text' }],
-            role: 'model',
-          },
-          invocationId: 'e-test-123',
-          author: 'model',
-          actions: {
-            stateDelta: {},
-            artifactDelta: {},
-          },
-        },
-      ]
-
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => adkResponse,
-      } as Response)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        response: 'Agent response text',
+      })
 
       const result = await messageRouter.routeMessage(mockMessage)
 
@@ -258,27 +211,11 @@ describe('MessageRouter', () => {
         environment: 'lab',
       }
 
-      // Mock ADK response
-      const adkResponse = [
-        {
-          content: {
-            parts: [{ text: 'Agent response text' }],
-            role: 'model',
-          },
-          invocationId: 'e-test-123',
-          author: 'model',
-          actions: {
-            stateDelta: {},
-            artifactDelta: {},
-          },
-        },
-      ]
-
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => adkResponse,
-      } as Response)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        response: 'Agent response text',
+      })
 
       const result = await messageRouter.routeMessage(mockMessage)
 
@@ -309,12 +246,219 @@ describe('MessageRouter', () => {
       vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
       const timeoutError = new Error('ADK request timed out after 30000ms')
       timeoutError.name = 'AbortError'
-      vi.mocked(global.fetch).mockRejectedValueOnce(timeoutError)
+      vi.mocked(mockAgentClient.sendMessage).mockRejectedValueOnce(timeoutError)
 
       const result = await messageRouter.routeMessage(mockMessage)
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('Failed to communicate with agent')
+    })
+
+    it('should handle agent response with success=false', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://localhost:8000',
+        environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: false,
+        error: 'Agent processing failed',
+      })
+
+      const result = await messageRouter.routeMessage(mockMessage)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Agent processing failed')
+    })
+
+    it('should handle agent response with success=false and no error message', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://localhost:8000',
+        environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: false,
+      })
+
+      const result = await messageRouter.routeMessage(mockMessage)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Agent processing failed')
+    })
+
+    it('should not send message via provider when agent response has no text', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://localhost:8000',
+        environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        // No response text
+      })
+
+      const result = await messageRouter.routeMessage(mockMessage)
+
+      expect(result.success).toBe(true)
+      expect(result.response).toBeUndefined()
+      expect(mockWhatsAppProvider.sendMessage).not.toHaveBeenCalled()
+    })
+
+    it('should handle provider sendMessage failure gracefully', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://localhost:8000',
+        environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        response: 'Agent response text',
+      })
+      vi.mocked(mockWhatsAppProvider.sendMessage).mockRejectedValueOnce(
+        new Error('WhatsApp connection failed')
+      )
+
+      const result = await messageRouter.routeMessage(mockMessage)
+
+      // Should still return success even if sending response fails
+      expect(result.success).toBe(true)
+      expect(result.response).toBe('Agent response text')
+      expect(mockWhatsAppProvider.sendMessage).toHaveBeenCalled()
+    })
+
+    it('should use baseUrl from adkConfig when provided', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://localhost:8000',
+        environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://custom-base-url:9000',
+          },
+        },
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        response: 'Response',
+      })
+
+      await messageRouter.routeMessage(mockMessage)
+
+      expect(mockAgentClientFactory.createAdkClient).toHaveBeenCalledWith({
+        appName: 'test_agent',
+        baseUrl: 'http://custom-base-url:9000',
+        timeout: 30000,
+      })
+      expect(mockAgentClient.sendMessage).toHaveBeenCalledWith(
+        'http://custom-base-url:9000',
+        mockMessage
+      )
+    })
+
+    it('should use agentEndpoint when baseUrl is not in adkConfig', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://fallback-endpoint:8000',
+        environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            // No baseUrl
+          },
+        },
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        response: 'Response',
+      })
+
+      await messageRouter.routeMessage(mockMessage)
+
+      expect(mockAgentClientFactory.createAdkClient).toHaveBeenCalledWith({
+        appName: 'test_agent',
+        baseUrl: 'http://fallback-endpoint:8000',
+        timeout: 30000,
+      })
+      expect(mockAgentClient.sendMessage).toHaveBeenCalledWith(
+        'http://fallback-endpoint:8000',
+        mockMessage
+      )
+    })
+
+    it('should include agent response metadata in result', async () => {
+      const route: Route = {
+        channelId: 'test-channel-123',
+        agentEndpoint: 'http://localhost:8000',
+        environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
+      }
+
+      vi.mocked(mockRepository.findByChannelId).mockResolvedValue(route)
+      vi.mocked(mockAgentClient.sendMessage).mockResolvedValueOnce({
+        success: true,
+        response: 'Response',
+        metadata: {
+          adk: {
+            sessionId: 'test-session',
+            invocationId: 'test-invocation',
+          },
+        },
+      })
+
+      const result = await messageRouter.routeMessage(mockMessage)
+
+      expect(result.success).toBe(true)
+      expect(result.metadata).toMatchObject({
+        agentEndpoint: route.agentEndpoint,
+        environment: route.environment,
+        adk: {
+          sessionId: 'test-session',
+          invocationId: 'test-invocation',
+        },
+      })
     })
   })
 })

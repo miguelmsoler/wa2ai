@@ -1,38 +1,34 @@
 /**
- * Unit tests for Evolution API webhook normalization.
+ * Unit tests for webhook adapter.
  * 
  * Tests the normalization logic for Evolution API webhook payloads
- * via EvolutionProvider.normalizeWebhook.
+ * directly in the webhook-adapter module.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { EvolutionProvider } from '../../router/src/providers/evolution-provider.js'
+import { normalizeEvolutionApiWebhook } from '../../router/src/core/webhook-adapter.js'
+import { logger } from '../../router/src/core/logger.js'
 
-describe('EvolutionProvider.normalizeWebhook', () => {
-  let provider: EvolutionProvider
-  let consoleLogSpy: ReturnType<typeof vi.spyOn>
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+// Mock logger
+vi.mock('../../router/src/core/logger.js', () => ({
+  logger: {
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  },
+  isDebugMode: vi.fn(() => false),
+}))
 
+describe('WebhookAdapter', () => {
   beforeEach(() => {
-    // Mock console.log and console.warn
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {}) as any
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {}) as any
-    
-    // Create EvolutionProvider instance
-    provider = new EvolutionProvider({
-      apiUrl: 'http://test-evolution-api:8080',
-      apiKey: 'test-key',
-      instanceName: 'wa2ai-test',
-    })
-  })
-
-  afterEach(() => {
-    consoleLogSpy.mockRestore()
-    consoleWarnSpy.mockRestore()
     vi.clearAllMocks()
   })
 
-  describe('normalizeWebhook', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('normalizeEvolutionApiWebhook', () => {
     it('should normalize messages.upsert event with conversation message', () => {
       const payload = {
         event: 'messages.upsert',
@@ -50,7 +46,7 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.id).toBe('test123')
@@ -58,6 +54,7 @@ describe('EvolutionProvider.normalizeWebhook', () => {
       expect(result?.channelId).toBe('5493777239922')
       expect(result?.text).toBe('Hello, this is a test message')
       expect(result?.timestamp).toBeInstanceOf(Date)
+      expect(result?.timestamp.getTime()).toBe(1234567890 * 1000)
       expect(result?.metadata?.instance).toBe('wa2ai-test')
       expect(result?.metadata?.eventType).toBe('messages.upsert')
     })
@@ -81,7 +78,7 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.text).toBe('This is an extended text message')
@@ -106,7 +103,7 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.text).toBe('This is an image caption')
@@ -129,13 +126,13 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.text).toBe('[media or unsupported message type]')
     })
 
-    it('should extract channel ID from group JID', () => {
+    it('should extract channel ID from group JID (full JID for groups)', () => {
       const payload = {
         event: 'messages.upsert',
         instance: 'wa2ai-test',
@@ -152,10 +149,56 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.channelId).toBe('120363123456789012@g.us')
+    })
+
+    it('should extract channel ID from individual chat JID (phone number only)', () => {
+      const payload = {
+        event: 'messages.upsert',
+        instance: 'wa2ai-test',
+        data: {
+          key: {
+            remoteJid: '5493777239922@s.whatsapp.net',
+            fromMe: false,
+            id: 'test123',
+          },
+          message: {
+            conversation: 'Individual message',
+          },
+          messageTimestamp: 1234567890,
+        },
+      }
+
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).not.toBeNull()
+      expect(result?.channelId).toBe('5493777239922')
+    })
+
+    it('should handle JID without @s.whatsapp.net suffix', () => {
+      const payload = {
+        event: 'messages.upsert',
+        instance: 'wa2ai-test',
+        data: {
+          key: {
+            remoteJid: '5493777239922',
+            fromMe: false,
+            id: 'test123',
+          },
+          message: {
+            conversation: 'Test message',
+          },
+          messageTimestamp: 1234567890,
+        },
+      }
+
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).not.toBeNull()
+      expect(result?.channelId).toBe('5493777239922')
     })
 
     it('should use from field if remoteJid is missing', () => {
@@ -171,11 +214,30 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.from).toBe('5493777239922@s.whatsapp.net')
       expect(result?.channelId).toBe('5493777239922')
+    })
+
+    it('should use unknown as fallback if both remoteJid and from are missing', () => {
+      const payload = {
+        event: 'messages.upsert',
+        instance: 'wa2ai-test',
+        data: {
+          message: {
+            conversation: 'Test message',
+          },
+          messageTimestamp: 1234567890,
+        },
+      }
+
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).not.toBeNull()
+      expect(result?.from).toBe('unknown')
+      expect(result?.channelId).toBe('unknown')
     })
 
     it('should generate message ID if key.id is missing', () => {
@@ -194,7 +256,7 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.id).toMatch(/^msg-\d+$/)
@@ -217,7 +279,7 @@ describe('EvolutionProvider.normalizeWebhook', () => {
       }
 
       const before = new Date()
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
       const after = new Date()
 
       expect(result).not.toBeNull()
@@ -235,9 +297,10 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).toBeNull()
+      expect(logger.info).toHaveBeenCalled()
     })
 
     it('should return null for messages.upsert event without data', () => {
@@ -247,9 +310,13 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         // data is missing
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).toBeNull()
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('messages.upsert event has no data'),
+        expect.any(Object)
+      )
     })
 
     it('should return null for webhook without event type', () => {
@@ -262,9 +329,13 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).toBeNull()
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Received webhook with unknown format'),
+        expect.any(Object)
+      )
     })
 
     it('should return null for completely invalid payload', () => {
@@ -272,7 +343,19 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         unknownField: 'unknown value',
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).toBeNull()
+    })
+
+    it('should return null for null payload', () => {
+      const result = normalizeEvolutionApiWebhook(null)
+
+      expect(result).toBeNull()
+    })
+
+    it('should return null for undefined payload', () => {
+      const result = normalizeEvolutionApiWebhook(undefined)
 
       expect(result).toBeNull()
     })
@@ -295,11 +378,120 @@ describe('EvolutionProvider.normalizeWebhook', () => {
         },
       }
 
-      const result = provider.normalizeWebhook(payload)
+      const result = normalizeEvolutionApiWebhook(payload)
 
       expect(result).not.toBeNull()
       expect(result?.metadata?.rawMessage).toEqual(payload.data.message)
     })
+
+    it('should handle instance name from payload', () => {
+      const payload = {
+        event: 'messages.upsert',
+        instance: 'custom-instance',
+        data: {
+          key: {
+            remoteJid: '5493777239922@s.whatsapp.net',
+            fromMe: false,
+            id: 'test123',
+          },
+          message: {
+            conversation: 'Test message',
+          },
+          messageTimestamp: 1234567890,
+        },
+      }
+
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).not.toBeNull()
+      expect(result?.metadata?.instance).toBe('custom-instance')
+    })
+
+    it('should use unknown as default instance if missing', () => {
+      const payload = {
+        event: 'messages.upsert',
+        data: {
+          key: {
+            remoteJid: '5493777239922@s.whatsapp.net',
+            fromMe: false,
+            id: 'test123',
+          },
+          message: {
+            conversation: 'Test message',
+          },
+          messageTimestamp: 1234567890,
+        },
+      }
+
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).not.toBeNull()
+      expect(result?.metadata?.instance).toBe('unknown')
+    })
+
+    it('should handle JID with non-numeric prefix for individual chats', () => {
+      const payload = {
+        event: 'messages.upsert',
+        instance: 'wa2ai-test',
+        data: {
+          key: {
+            remoteJid: 'abc123@s.whatsapp.net',
+            fromMe: false,
+            id: 'test123',
+          },
+          message: {
+            conversation: 'Test message',
+          },
+          messageTimestamp: 1234567890,
+        },
+      }
+
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).not.toBeNull()
+      // Should return the full JID if no numeric match
+      expect(result?.channelId).toBe('abc123@s.whatsapp.net')
+    })
+
+    it('should handle empty message object', () => {
+      const payload = {
+        event: 'messages.upsert',
+        instance: 'wa2ai-test',
+        data: {
+          key: {
+            remoteJid: '5493777239922@s.whatsapp.net',
+            fromMe: false,
+            id: 'test123',
+          },
+          message: {},
+          messageTimestamp: 1234567890,
+        },
+      }
+
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).not.toBeNull()
+      expect(result?.text).toBe('[media or unsupported message type]')
+    })
+
+    it('should handle missing message object', () => {
+      const payload = {
+        event: 'messages.upsert',
+        instance: 'wa2ai-test',
+        data: {
+          key: {
+            remoteJid: '5493777239922@s.whatsapp.net',
+            fromMe: false,
+            id: 'test123',
+          },
+          messageTimestamp: 1234567890,
+        },
+      }
+
+      const result = normalizeEvolutionApiWebhook(payload)
+
+      expect(result).not.toBeNull()
+      expect(result?.text).toBe('[media or unsupported message type]')
+    })
   })
 })
-

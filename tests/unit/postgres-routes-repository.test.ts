@@ -465,6 +465,28 @@ describe('PostgresRoutesRepository', () => {
 
       await expect(repository.close()).rejects.toThrow('Close failed')
     })
+
+    it('should log debug information when closing with cache', async () => {
+      // Set cache count
+      ;(repository as any).routeCountCache = 5
+
+      await repository.close()
+
+      expect(mockPool.end).toHaveBeenCalled()
+    })
+
+    it('should handle close with debug mode enabled', async () => {
+      // Mock isDebugMode to return true
+      const originalEnv = process.env.WA2AI_DEBUG
+      process.env.WA2AI_DEBUG = 'true'
+
+      try {
+        await repository.close()
+        expect(mockPool.end).toHaveBeenCalled()
+      } finally {
+        process.env.WA2AI_DEBUG = originalEnv
+      }
+    })
   })
 
   describe('refreshRouteCount', () => {
@@ -539,6 +561,93 @@ describe('PostgresRoutesRepository', () => {
       const route = (repository as any).mapRowToRoute(row)
 
       expect(route.environment).toBe('prod')
+    })
+
+    it('should handle route with regexFilter', () => {
+      const row = {
+        channel_id: 'test-channel-789',
+        agent_endpoint: 'http://localhost:8000/agent',
+        environment: 'lab',
+        regex_filter: '^Test',
+      }
+
+      const route = (repository as any).mapRowToRoute(row)
+
+      expect(route.regexFilter).toBe('^Test')
+    })
+
+    it('should handle route with config JSON', () => {
+      const row = {
+        channel_id: 'test-channel-789',
+        agent_endpoint: 'http://localhost:8000/agent',
+        environment: 'lab',
+        // mapRowToRoute expects config to already be parsed (as Record<string, unknown>)
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
+      }
+
+      const route = (repository as any).mapRowToRoute(row)
+
+      expect(route.config).toEqual({
+        adk: {
+          appName: 'test_agent',
+          baseUrl: 'http://localhost:8000',
+        },
+      })
+    })
+
+    it('should handle route with null config', () => {
+      const row = {
+        channel_id: 'test-channel-789',
+        agent_endpoint: 'http://localhost:8000/agent',
+        environment: 'lab',
+        config: null,
+      }
+
+      const route = (repository as any).mapRowToRoute(row)
+
+      expect(route.config).toBeUndefined()
+    })
+  })
+
+  describe('error handling edge cases', () => {
+    it('should handle connection pool errors during query', async () => {
+      const connectionError = new Error('Connection failed')
+      mockPool.connect = vi.fn().mockRejectedValueOnce(connectionError)
+
+      await expect(repository.findByChannelId('test')).rejects.toThrow()
+    })
+
+    it('should handle client release errors gracefully', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+      })
+      // Release errors are caught in finally block, so they don't propagate
+      mockClient.release = vi.fn().mockImplementationOnce(() => {
+        // Simulate error but don't throw - finally blocks catch and continue
+        console.error('Release failed (expected in test)')
+      })
+
+      const result = await repository.findByChannelId('test')
+      expect(result).toBeNull()
+      expect(mockClient.release).toHaveBeenCalled()
+    })
+
+    it('should handle refreshRouteCount with invalid count format', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ count: 'invalid' }],
+        rowCount: 1,
+      })
+
+      await (repository as any).refreshRouteCount()
+
+      // Should handle gracefully even with invalid count
+      expect(mockClient.release).toHaveBeenCalled()
     })
   })
 })

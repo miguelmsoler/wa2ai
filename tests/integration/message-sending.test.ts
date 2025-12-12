@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { InMemoryRoutesRepository } from '../../router/src/core/routes-repository.js'
 import { RouterService } from '../../router/src/core/router-service.js'
 import { MessageRouter } from '../../router/src/core/message-router.js'
-import { HttpAgentClient } from '../../router/src/infra/http-agent-client.js'
+import { HttpAgentClientFactory } from '../../router/src/infra/agent-client-factory.js'
 import type { IncomingMessage, Route, OutgoingMessage } from '../../router/src/core/models.js'
 import type { WhatsAppProvider } from '../../router/src/core/whatsapp-provider.js'
 
@@ -38,23 +38,14 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
       normalizeWebhook: vi.fn().mockReturnValue(null),
     }
 
-    // Create agent client
-    const agentClient = new HttpAgentClient({
-      timeout: 30000,
-      adk: {
-        appName: 'test_agent',
-        baseUrl: 'http://localhost:8000',
-      },
-    })
+    // Create agent client factory
+    const agentClientFactory = new HttpAgentClientFactory()
 
     // Create message router with mocked provider
-    messageRouter = new MessageRouter(
-      routerService,
-      agentClient,
-      {
-        whatsappProvider: mockWhatsAppProvider,
-      }
-    )
+    messageRouter = new MessageRouter(routerService, {
+      whatsappProvider: mockWhatsAppProvider,
+      agentClientFactory,
+    })
 
     fetchMock = global.fetch as ReturnType<typeof vi.fn>
     fetchMock.mockClear()

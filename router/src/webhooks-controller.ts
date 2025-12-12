@@ -104,10 +104,12 @@ function registerQREndpoints(app: FastifyInstance): void {
     const connection = getBaileysConnection()
     const state = connection.getState()
 
-    logger.debug('[WebhookController] QR endpoint accessed', {
-      status: state.status,
-      hasQR: !!state.qrCode,
-    })
+    if (isDebugMode()) {
+      logger.debug('[WebhookController] QR endpoint accessed', {
+        status: state.status,
+        hasQR: !!state.qrCode,
+      })
+    }
 
     // If already connected, show success message
     if (state.status === 'connected') {

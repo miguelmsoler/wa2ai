@@ -14,6 +14,7 @@ import { getBaileysConnection } from './providers/baileys-connection.js'
 import { BaileysProvider } from './providers/baileys-provider.js'
 import { EvolutionProvider } from './providers/evolution-provider.js'
 import { PostgresRoutesRepository } from './infra/postgres-routes-repository.js'
+import { HttpAgentClientFactory } from './infra/agent-client-factory.js'
 import { RouterService } from './core/router-service.js'
 import { MessageRouter } from './core/message-router.js'
 import { setupBaileysDirectRouting } from './providers/baileys-routing.js'
@@ -82,11 +83,8 @@ function initializeRouting(): MessageRouter {
   // Create router service
   const routerService = new RouterService(globalRoutesRepository)
 
-  // Note: HttpAgentClient is now created per-route in MessageRouter
-  // because it requires ADK configuration from the route
-  // This agentClient is kept for backward compatibility but won't be used
-  // (MessageRouter creates its own ADK clients per route)
-  const agentClient = null as any // Placeholder - not used
+  // Create agent client factory (infrastructure implementation)
+  const agentClientFactory = new HttpAgentClientFactory()
 
   // Create WhatsApp provider
   const whatsappProvider = createWhatsAppProvider()
@@ -95,22 +93,19 @@ function initializeRouting(): MessageRouter {
     logger.debug('[Index] Dependencies created', {
       provider: PROVIDER,
       hasProvider: !!whatsappProvider,
-      hasAgentClient: !!agentClient,
+      hasAgentClientFactory: !!agentClientFactory,
     })
   }
 
-  // Create message router with dependencies (whatsappProvider is required)
+  // Create message router with dependencies (whatsappProvider and agentClientFactory are required)
   if (!whatsappProvider) {
     throw new Error('WhatsApp provider is required for MessageRouter')
   }
 
-  const messageRouter = new MessageRouter(
-    routerService,
-    agentClient,
-    {
-      whatsappProvider,
-    }
-  )
+  const messageRouter = new MessageRouter(routerService, {
+    whatsappProvider,
+    agentClientFactory,
+  })
 
   // Register route management endpoints BEFORE server starts listening
   if (globalRoutesRepository) {
