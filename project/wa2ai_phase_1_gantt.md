@@ -92,38 +92,38 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 
 ## 🗓️ Day 7 — End-to-end integration (4–6 h)
 
-- Configure initial route for test channel (0.5 h).
-- Start stack with docker-compose (0.5 h).
-- Send real message from WhatsApp and verify flow (1.5–2 h).
-- Chain complete cycle: WhatsApp → Evolution → wa2ai → ADK → wa2ai → Evolution → WhatsApp.
-- Validate logs and final response (1 h).
-- Fallback / agent failure handling (0.5–1 h).
++ Configure initial route for test channel (0.5 h).
++ Start stack with docker-compose (0.5 h).
++ Send real message from WhatsApp and verify flow (1.5–2 h).
++ Chain complete cycle: WhatsApp → Baileys → wa2ai → ADK → wa2ai → Baileys → WhatsApp.
++ Validate logs and final response (1 h).
++ Fallback / agent failure handling (0.5–1 h).
 
 ---
 
 ## 🗓️ Day 8 — Observability and DX (2–3 h)
 
-- Implement structured logging (1 h).
-- Add `/health` endpoint (0.5 h).
-- Add npm scripts (`dev`, `build`, `start`) (0.5–1 h).
-- Document single startup command (0.5 h).
++ Implement structured logging (1 h).
++ Add `/health` endpoint (0.5 h).
++ Add npm scripts (`dev`, `build`, `start`) (0.5–1 h).
++ Document single startup command (0.5 h).
 
 ---
 
 ## 🗓️ Day 9 — Documentation (2–3 h)
 
-- Complete `docs/phase1-lab.md` with architecture and flow (1.5 h).
-- Add flow diagrams (0.5 h).
-- Write laboratory operation guide: stack startup, QR, add routes (1 h).
-- Add basic troubleshooting (0.5 h).
++ Complete `docs/phase1-lab.md` with architecture and flow (1.5 h). ✅
++ Add flow diagrams (0.5 h). ✅ *(Diagramas Mermaid visuales agregados)*
++ Write laboratory operation guide: stack startup, QR, add routes (1 h).
++ Add basic troubleshooting (0.5 h).
 
 ---
 
 ## 🗓️ Day 10 — Phase 1 closure (0.5 h)
 
-- Final checklist: confirm complete flow working, routes modifiable, documentation complete.
-- Run final end-to-end test.
-- Verify wa2ai ready for Cloud API in Phase 2.
++ Final checklist: confirm complete flow working, routes modifiable, documentation complete.
++ Run final end-to-end test.
++ Verify wa2ai ready for Cloud API in Phase 2.
 
 ---
 

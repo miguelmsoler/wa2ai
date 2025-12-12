@@ -412,6 +412,223 @@ async function routeMessage(
 
 ---
 
+## Documentation Writing Style
+
+**CRITICAL: All documentation must be written in English.** This includes:
+- Technical documentation (e.g., `docs/phase1-lab.md`, `docs/phase2-prod.md`)
+- Code comments and docstrings (see [Code documentation](#code-documentation))
+- README files
+- Project management documentation
+- API documentation
+- Any other written documentation in the repository
+
+### General Principles: Didactic and Clear Writing
+
+All documentation should be written in a **didactic, clear style** that explains concepts with the **clarity and pedagogical level of an experienced MIT professor**. The goal is to make the documentation accessible to someone who has no prior knowledge of the project, while maintaining the depth and rigor expected from top-tier technical documentation.
+
+**Writing Standard:** Aim for the clarity, didactic approach, and pedagogical excellence that an experienced MIT professor would use when teaching students. This means:
+- Explaining complex concepts in accessible ways without dumbing them down
+- Building understanding progressively from fundamentals to advanced topics
+- Using precise technical language while remaining clear and understandable
+- Providing context and motivation for every concept introduced
+- Anticipating questions and addressing them proactively
+
+**CRITICAL: Never mention the writing style or standards within the documentation itself.** The documentation should simply BE clear and didactic, not TELL the reader that it is. Mentioning writing standards breaks immersion and sounds pretentious. The document should present information about the subject matter only, not about how it's written. This is the "show, don't tell" principle: demonstrate clarity through the writing itself, don't announce it.
+
+#### Core Requirements
+
+1. **Start with the "Why" and "What"**
+   - Always begin by clearly stating the **objective** or **problem** the solution addresses
+   - Make it immediately clear **what** the solution does and **why** it exists
+   - Provide context so readers understand the purpose before diving into details
+
+2. **Explain Component Responsibilities and Interactions**
+   - For each component, clearly describe:
+     - **What it does** (its responsibility)
+     - **Why it exists** (its purpose in the system)
+     - **How it works** (its internal logic or algorithm, when relevant)
+   - Explain **how components interact** to achieve the overall goal
+   - Use step-by-step explanations of workflows and data flows
+
+3. **Facilitate Understanding from a Code Perspective**
+   - Explain how the solution works from the point of view of the code
+   - Show the relationships between components
+   - Use examples that illustrate the actual implementation
+   - Include code snippets when they help clarify concepts
+
+4. **Use Clear, Accessible Language**
+   - Write as if explaining to someone with no prior knowledge
+   - Use analogies and metaphors when helpful
+   - Break complex concepts into smaller, digestible parts
+   - Use progressive disclosure: start simple, then add complexity
+
+5. **Structure for Learning**
+   - Use clear headings and a logical flow
+   - Provide a table of contents for longer documents
+   - Use visual aids (diagrams, flowcharts) when they clarify concepts
+   - Include examples and use cases
+
+### Documentation Type-Specific Guidelines
+
+#### Technical Documentation (`docs/` directory)
+
+Technical documentation (e.g., `docs/phase1-lab.md`, `docs/phase2-prod.md`) should:
+
+1. **Introduction Section**
+   - Start with a clear problem statement
+   - Explain the solution's objective
+   - Provide high-level overview before diving into details
+
+2. **Architecture Section**
+   - Explain the overall architecture with clear diagrams
+   - Describe each component's responsibility
+   - Show how components interact through diagrams and step-by-step flows
+
+3. **Component Details**
+   - For each major component:
+     - What it does (responsibility)
+     - Why it exists (purpose)
+     - How it works (internal logic, when relevant)
+     - How it interacts with other components
+
+4. **Flow Explanations**
+   - Provide detailed, step-by-step explanations of message flows
+   - Use sequence diagrams or flowcharts
+   - Explain each step in the flow
+   - Show how data transforms as it moves through the system
+
+5. **Code Examples**
+   - Include relevant code snippets with explanations
+   - Show how components are used together
+   - Provide practical examples that readers can relate to
+
+#### Code Documentation (JSDoc and Comments)
+
+Code documentation should:
+
+1. **JSDoc Comments**
+   - Explain **what** the function/class does
+   - Explain **why** it exists (its purpose in the system)
+   - Include **how** it works for complex logic
+   - Provide examples when helpful
+
+2. **Inline Comments**
+   - Explain **why** decisions were made, not **what** the code does
+   - Provide context for non-obvious solutions
+   - Reference external documentation when relevant
+
+#### README Files
+
+README files should:
+
+1. **Start with Clear Overview**
+   - What the project does
+   - Why it exists
+   - Key features
+
+2. **Provide Quick Start**
+   - Step-by-step setup instructions
+   - Clear examples
+   - Common use cases
+
+3. **Explain Architecture at High Level**
+   - How major components work together
+   - Key concepts and design decisions
+
+4. **Follow Project State-Appropriate Structure and Best Practices**
+   - README files must follow the structure and best practices used in projects at the same development stage:
+     - **Initial/Experimental**: Focus on setup, basic usage, known limitations, and contribution guidelines. Audience: developers who want to contribute or experiment.
+     - **In Development**: Include current status, roadmap, known issues, and how to contribute. Audience: developers who want to contribute or use early versions.
+     - **Mature/Production-Ready**: **Focus on end-user usage, not development.** The README should center on:
+       - How to install and use the solution
+       - Common use cases and examples
+       - Configuration options for end users
+       - Troubleshooting common issues
+       - Production deployment guides
+       - Security considerations for users
+       - Support and community resources
+       - Development/contribution information should be moved to separate files (e.g., `CONTRIBUTING.md`, `DEVELOPMENT.md`) or de-emphasized
+     - At this stage, most readers are users who want to **use** the solution, not develop it
+   - Structure the README to match the project's maturity level and audience expectations
+   - Include appropriate badges, status indicators, and disclaimers based on project state
+   - Reference similar projects in the same stage for structure inspiration
+
+#### API Documentation
+
+API documentation should:
+
+1. **Explain Purpose**
+   - What the API does
+   - Why it exists
+   - When to use it
+
+2. **Show Examples**
+   - Request/response examples
+   - Error handling examples
+   - Common use cases
+
+3. **Explain Behavior**
+   - How endpoints interact
+   - Data flow through the API
+   - Error scenarios
+
+### Example: Good Documentation Structure
+
+A well-structured technical document should follow this pattern:
+
+```markdown
+# Title
+
+## Introduction
+- Problem statement
+- Solution objective
+- High-level overview
+
+## Architecture
+- Overall architecture diagram
+- Component responsibilities
+- How components interact
+
+## Component Details
+For each component:
+- What it does
+- Why it exists
+- How it works
+- How it interacts with others
+
+## Flows
+- Step-by-step flow explanations
+- Diagrams showing data flow
+- Examples
+
+## Configuration
+- How to configure
+- What each option does
+- Why certain choices matter
+
+## Examples
+- Practical examples
+- Common use cases
+- Code snippets
+```
+
+### Checklist for Documentation
+
+Before considering documentation complete, verify:
+
+- [ ] Written entirely in English
+- [ ] Starts with clear objective/problem statement
+- [ ] Explains component responsibilities
+- [ ] Shows how components interact
+- [ ] Uses clear, accessible language
+- [ ] Includes examples where helpful
+- [ ] Provides step-by-step explanations for complex flows
+- [ ] Uses diagrams/visual aids when they clarify concepts
+- [ ] Structured logically with clear headings
+- [ ] Accessible to someone with no prior knowledge
+
+---
+
 ## Tests
 
 - All tests live under `tests/`.
