@@ -50,7 +50,7 @@ export class MessageRouter {
 
   constructor(
     private routerService: RouterService,
-    private agentClient: AgentClient,
+    _agentClient: AgentClient, // Not used - kept for interface compatibility
     config: MessageRouterConfig
   ) {
     this.whatsappProvider = config.whatsappProvider
@@ -58,7 +58,6 @@ export class MessageRouter {
     if (isDebugMode()) {
       logger.debug('[MessageRouter] Initialized', {
         hasRouterService: !!routerService,
-        hasAgentClient: !!agentClient,
       })
     }
   }
@@ -126,8 +125,38 @@ export class MessageRouter {
 
     // Step 2: Send to agent
     try {
-      const agentResponse = await this.agentClient.sendMessage(
-        route.agentEndpoint,
+      // Get agent configuration from route
+      // Currently only ADK is supported, but the system is designed to support
+      // other agent types in the future (e.g., gRPC, WebSocket)
+      const adkConfig = route.config?.adk as
+        | { appName: string; baseUrl?: string; sessionIdGenerator?: string }
+        | undefined
+
+      if (!adkConfig?.appName) {
+        logger.error('[MessageRouter] Route missing agent configuration', {
+          messageId: message.id,
+          channelId: route.channelId,
+          agentEndpoint: route.agentEndpoint,
+        })
+        return {
+          success: false,
+          error: 'Route missing required agent configuration (config.adk.appName). Currently only ADK agents are supported.',
+        }
+      }
+
+      // Create ADK client for this call
+      // TODO: In the future, support other agent types via route.config.agentType
+      const { HttpAgentClient } = await import('../infra/http-agent-client.js')
+      const adkClient = new HttpAgentClient({
+        timeout: 30000,
+        adk: {
+          appName: adkConfig.appName,
+          baseUrl: adkConfig.baseUrl || route.agentEndpoint,
+        },
+      })
+
+      const agentResponse = await adkClient.sendMessage(
+        adkConfig.baseUrl || route.agentEndpoint,
         message
       )
 

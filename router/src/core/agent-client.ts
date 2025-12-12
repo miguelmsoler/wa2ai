@@ -4,7 +4,9 @@
  * This interface defines the contract for communicating with AI agent endpoints.
  * Following Clean Architecture, this is a domain port that belongs in the core layer.
  * 
- * Implementations (HTTP, gRPC, etc.) should be in the infrastructure layer.
+ * Implementations (HTTP/ADK, gRPC, WebSocket, etc.) should be in the infrastructure layer.
+ * Currently, only the ADK HTTP implementation exists (`HttpAgentClient`), but the system
+ * is designed to support other agent protocols in the future.
  * 
  * @module core/agent-client
  */

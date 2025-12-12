@@ -29,18 +29,18 @@ describe('WebhooksController', () => {
     mockProvider = {
       sendMessage: vi.fn().mockResolvedValue(undefined),
       normalizeWebhook: vi.fn((payload: unknown) => {
-        const p = payload as { event?: string; instance?: string; data?: unknown }
-        if (p.event === 'messages.upsert' && p.data) {
-          const msg = p.data as { key?: { remoteJid?: string; id?: string }; from?: string; message?: { conversation?: string; extendedTextMessage?: { text?: string }; imageMessage?: { caption?: string } } }
-          return {
-            id: msg.key?.id || 'test-id',
-            from: msg.key?.remoteJid || msg.from || 'unknown',
-            channelId: (msg.key?.remoteJid || msg.from || 'unknown').split('@')[0],
-            text: msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '[media or unsupported message type]',
-            timestamp: new Date(),
-          }
+      const p = payload as { event?: string; instance?: string; data?: unknown }
+      if (p.event === 'messages.upsert' && p.data) {
+        const msg = p.data as { key?: { remoteJid?: string; id?: string }; from?: string; message?: { conversation?: string; extendedTextMessage?: { text?: string }; imageMessage?: { caption?: string } } }
+        return {
+          id: msg.key?.id || 'test-id',
+          from: msg.key?.remoteJid || msg.from || 'unknown',
+          channelId: (msg.key?.remoteJid || msg.from || 'unknown').split('@')[0],
+          text: msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '[media or unsupported message type]',
+          timestamp: new Date(),
         }
-        return null
+      }
+      return null
       }),
     }
     

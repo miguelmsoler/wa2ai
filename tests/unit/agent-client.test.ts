@@ -17,7 +17,13 @@ describe('HttpAgentClient', () => {
   beforeEach(() => {
     fetchMock = global.fetch as ReturnType<typeof vi.fn>
     fetchMock.mockClear()
-    client = new HttpAgentClient()
+    client = new HttpAgentClient({
+      timeout: 30000,
+      adk: {
+        appName: 'test_agent',
+        baseUrl: 'http://localhost:8000',
+      },
+    })
   })
 
   afterEach(() => {
@@ -34,55 +40,58 @@ describe('HttpAgentClient', () => {
       metadata: { messageType: 'conversation' },
     }
 
-    it('should send message successfully', async () => {
-      const mockResponse = {
-        success: true,
-        response: 'Hello, user!',
-      }
+    it('should send ADK message successfully', async () => {
+      // ADK returns array of events
+      const mockAdkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Hello, user!' }],
+            role: 'model',
+          },
+          invocationId: 'e-test-123',
+          author: 'model',
+          actions: {
+            stateDelta: {},
+            artifactDelta: {},
+          },
+        },
+      ]
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse,
+        json: async () => mockAdkResponse,
       })
 
-      const result = await client.sendMessage('http://localhost:8000/agent', mockMessage)
+      const result = await client.sendMessage('http://localhost:8000', mockMessage)
 
-      expect(result).toEqual(mockResponse)
+      expect(result.success).toBe(true)
+      expect(result.response).toBe('Hello, user!')
       expect(fetchMock).toHaveBeenCalledTimes(1)
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:8000/agent',
+        'http://localhost:8000/run',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
-          body: JSON.stringify({
-            id: mockMessage.id,
-            from: mockMessage.from,
-            channelId: mockMessage.channelId,
-            text: mockMessage.text,
-            timestamp: mockMessage.timestamp.toISOString(),
-            metadata: mockMessage.metadata,
-          }),
+          body: expect.stringContaining('"app_name":"test_agent"'),
         })
       )
     })
 
-    it('should handle agent error response', async () => {
-      const mockResponse = {
-        success: false,
-        error: 'Agent processing failed',
-      }
+    it('should handle ADK response with no model events', async () => {
+      // ADK returns empty events array
+      const mockAdkResponse: any[] = []
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse,
+        json: async () => mockAdkResponse,
       })
 
-      const result = await client.sendMessage('http://localhost:8000/agent', mockMessage)
+      const result = await client.sendMessage('http://localhost:8000', mockMessage)
 
-      expect(result).toEqual(mockResponse)
-      expect(result.success).toBe(false)
+      expect(result.success).toBe(true)
+      expect(result.response).toBeUndefined()
     })
 
     it('should throw error on HTTP error status', async () => {
@@ -93,16 +102,16 @@ describe('HttpAgentClient', () => {
       })
 
       await expect(
-        client.sendMessage('http://localhost:8000/agent', mockMessage)
-      ).rejects.toThrow('Agent endpoint returned 500')
+        client.sendMessage('http://localhost:8000', mockMessage)
+      ).rejects.toThrow('ADK agent endpoint returned 500')
     })
 
     it('should throw error on network failure', async () => {
       fetchMock.mockRejectedValueOnce(new Error('Network error'))
 
       await expect(
-        client.sendMessage('http://localhost:8000/agent', mockMessage)
-      ).rejects.toThrow('Failed to send message to agent: Network error')
+        client.sendMessage('http://localhost:8000', mockMessage)
+      ).rejects.toThrow('Failed to send message to ADK agent: Network error')
     })
 
     // Note: Timeout behavior is tested indirectly through error handling
@@ -110,21 +119,38 @@ describe('HttpAgentClient', () => {
 
     it('should include custom headers', async () => {
       const customClient = new HttpAgentClient({
+        timeout: 30000,
         headers: {
           'Authorization': 'Bearer token123',
           'X-Custom-Header': 'value',
         },
+        adk: {
+          appName: 'test_agent',
+          baseUrl: 'http://localhost:8000',
+        },
       })
+
+      const mockAdkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Response' }],
+            role: 'model',
+          },
+          invocationId: 'e-test',
+          author: 'model',
+          actions: { stateDelta: {}, artifactDelta: {} },
+        },
+      ]
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true }),
+        json: async () => mockAdkResponse,
       })
 
-      await customClient.sendMessage('http://localhost:8000/agent', mockMessage)
+      await customClient.sendMessage('http://localhost:8000', mockMessage)
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:8000/agent',
+        'http://localhost:8000/run',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
@@ -135,22 +161,29 @@ describe('HttpAgentClient', () => {
       )
     })
 
-    it('should handle response without response field', async () => {
-      const mockResponse = {
-        success: true,
-        metadata: { processed: true },
-      }
+    it('should handle ADK response with only user events', async () => {
+      // ADK returns only user event (no model response)
+      const mockAdkResponse = [
+        {
+          content: {
+            parts: [{ text: 'User message' }],
+            role: 'user',
+          },
+          invocationId: 'e-test',
+          author: 'user',
+          actions: { stateDelta: {}, artifactDelta: {} },
+        },
+      ]
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockResponse,
+        json: async () => mockAdkResponse,
       })
 
-      const result = await client.sendMessage('http://localhost:8000/agent', mockMessage)
+      const result = await client.sendMessage('http://localhost:8000', mockMessage)
 
       expect(result.success).toBe(true)
       expect(result.response).toBeUndefined()
-      expect(result.metadata).toEqual({ processed: true })
     })
   })
 

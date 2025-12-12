@@ -15,7 +15,6 @@ import { registerRouteEndpoints } from '../../router/src/routes-controller.js'
 import { PostgresRoutesRepository } from '../../router/src/infra/postgres-routes-repository.js'
 import { RouterService } from '../../router/src/core/router-service.js'
 import { MessageRouter } from '../../router/src/core/message-router.js'
-import { HttpAgentClient } from '../../router/src/infra/http-agent-client.js'
 import type { WhatsAppProvider } from '../../router/src/core/whatsapp-provider.js'
 
 // Mock pg module to avoid requiring real database
@@ -95,8 +94,10 @@ describe('wa2ai Smoke Tests', () => {
     // Create router service
     const routerService = new RouterService(routesRepository)
 
-    // Create agent client
-    const agentClient = new HttpAgentClient()
+    // Create agent client (not used directly, but required for MessageRouter)
+    const agentClient = {
+      sendMessage: vi.fn(),
+    } as any
 
     // Create message router
     messageRouter = new MessageRouter(routerService, agentClient, {

@@ -51,7 +51,13 @@ describe('Direct Routing Integration', () => {
     routerService = new RouterService(routesRepository)
     
     // Create agent client
-    const agentClient = new HttpAgentClient()
+    const agentClient = new HttpAgentClient({
+      timeout: 30000,
+      adk: {
+        appName: 'test_agent',
+        baseUrl: 'http://localhost:8000',
+      },
+    })
     
     // Create BaileysProvider for message router
     const baileysProvider = new BaileysProvider()
@@ -73,21 +79,39 @@ describe('Direct Routing Integration', () => {
 
   describe('Complete Message Flow', () => {
     it('should route message from Baileys to agent and back', async () => {
-      // Setup route
+      // Setup route with ADK config
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
         environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
       }
       await routesRepository.addRoute(route)
 
-      // Mock agent response
+      // Mock ADK response
+      const adkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Hello from agent!' }],
+            role: 'model',
+          },
+          invocationId: 'e-test-123',
+          author: 'model',
+          actions: {
+            stateDelta: {},
+            artifactDelta: {},
+          },
+        },
+      ]
+
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          success: true,
-          response: 'Hello from agent!',
-        }),
+        json: async () => adkResponse,
       })
 
       // Simulate incoming message from Baileys
@@ -102,20 +126,13 @@ describe('Direct Routing Integration', () => {
       // Route message
       const result = await messageRouter.routeMessage(incomingMessage)
 
-      // Verify agent was called
+      // Verify agent was called with ADK format
       expect(fetchMock).toHaveBeenCalledTimes(1)
       expect(fetchMock).toHaveBeenCalledWith(
-        route.agentEndpoint,
+        'http://localhost:8000/run',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({
-            id: incomingMessage.id,
-            from: incomingMessage.from,
-            channelId: incomingMessage.channelId,
-            text: incomingMessage.text,
-            timestamp: incomingMessage.timestamp.toISOString(),
-            metadata: incomingMessage.metadata,
-          }),
+          body: expect.stringContaining('"app_name":"test_agent"'),
         })
       )
 
@@ -127,19 +144,42 @@ describe('Direct Routing Integration', () => {
     it('should handle multiple messages in sequence', async () => {
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
+      const adkResponse1 = [
+        {
+          content: { parts: [{ text: 'Response 1' }], role: 'model' },
+          invocationId: 'e-test-1',
+          author: 'model',
+          actions: { stateDelta: {}, artifactDelta: {} },
+        },
+      ]
+      const adkResponse2 = [
+        {
+          content: { parts: [{ text: 'Response 2' }], role: 'model' },
+          invocationId: 'e-test-2',
+          author: 'model',
+          actions: { stateDelta: {}, artifactDelta: {} },
+        },
+      ]
+
       fetchMock
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true, response: 'Response 1' }),
+          json: async () => adkResponse1,
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true, response: 'Response 2' }),
+          json: async () => adkResponse2,
         })
 
       const message1: IncomingMessage = {
@@ -169,17 +209,22 @@ describe('Direct Routing Integration', () => {
     it('should handle agent errors gracefully', async () => {
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
+      // Mock ADK HTTP error (404 - agent not found)
       fetchMock.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: false,
-          error: 'Agent processing failed',
-        }),
+        ok: false,
+        status: 404,
+        text: async () => 'Agent not found',
       })
 
       const message: IncomingMessage = {
@@ -193,13 +238,19 @@ describe('Direct Routing Integration', () => {
       const result = await messageRouter.routeMessage(message)
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Agent processing failed')
+      expect(result.error).toContain('ADK agent endpoint returned 404')
     })
 
     it('should handle network errors', async () => {
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
@@ -251,17 +302,36 @@ describe('Direct Routing Integration', () => {
     it('should handle message through Baileys handler', async () => {
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
+      // Mock ADK response
+      const adkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Agent response' }],
+            role: 'model',
+          },
+          invocationId: 'e-test-123',
+          author: 'model',
+          actions: {
+            stateDelta: {},
+            artifactDelta: {},
+          },
+        },
+      ]
+
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          success: true,
-          response: 'Agent response',
-        }),
+        json: async () => adkResponse,
       })
 
       setupBaileysDirectRouting(messageRouter)
@@ -286,12 +356,24 @@ describe('Direct Routing Integration', () => {
     it('should route to different agents based on channel', async () => {
       const route1: Route = {
         channelId: 'test-channel-111',
-        agentEndpoint: 'http://localhost:8000/agent1',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'agent1',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       const route2: Route = {
         channelId: 'test-channel-222',
-        agentEndpoint: 'http://localhost:8000/agent2',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'agent2',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
 
@@ -301,11 +383,25 @@ describe('Direct Routing Integration', () => {
       fetchMock
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true, response: 'Agent 1 response' }),
+          json: async () => [
+            {
+              content: { parts: [{ text: 'Agent 1 response' }], role: 'model' },
+              invocationId: 'e-test-1',
+              author: 'model',
+              actions: { stateDelta: {}, artifactDelta: {} },
+            },
+          ],
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true, response: 'Agent 2 response' }),
+          json: async () => [
+            {
+              content: { parts: [{ text: 'Agent 2 response' }], role: 'model' },
+              invocationId: 'e-test-2',
+              author: 'model',
+              actions: { stateDelta: {}, artifactDelta: {} },
+            },
+          ],
         })
 
       const message1: IncomingMessage = {
@@ -330,13 +426,19 @@ describe('Direct Routing Integration', () => {
       expect(fetchMock).toHaveBeenCalledTimes(2)
       expect(fetchMock).toHaveBeenNthCalledWith(
         1,
-        route1.agentEndpoint,
-        expect.any(Object)
+        'http://localhost:8000/run',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"app_name":"agent1"'),
+        })
       )
       expect(fetchMock).toHaveBeenNthCalledWith(
         2,
-        route2.agentEndpoint,
-        expect.any(Object)
+        'http://localhost:8000/run',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"app_name":"agent2"'),
+        })
       )
       expect(result1.response).toBe('Agent 1 response')
       expect(result2.response).toBe('Agent 2 response')

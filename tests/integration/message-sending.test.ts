@@ -15,7 +15,6 @@ import { MessageRouter } from '../../router/src/core/message-router.js'
 import { HttpAgentClient } from '../../router/src/infra/http-agent-client.js'
 import type { IncomingMessage, Route, OutgoingMessage } from '../../router/src/core/models.js'
 import type { WhatsAppProvider } from '../../router/src/core/whatsapp-provider.js'
-import type { AgentResponse } from '../../router/src/core/agent-client.js'
 
 // Mock fetch for agent client
 global.fetch = vi.fn()
@@ -40,7 +39,13 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
     }
 
     // Create agent client
-    const agentClient = new HttpAgentClient()
+    const agentClient = new HttpAgentClient({
+      timeout: 30000,
+      adk: {
+        appName: 'test_agent',
+        baseUrl: 'http://localhost:8000',
+      },
+    })
 
     // Create message router with mocked provider
     messageRouter = new MessageRouter(
@@ -65,20 +70,36 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
       // Setup route
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
-      // Mock agent response
-      const agentResponse: AgentResponse = {
-        success: true,
-        response: 'Hello from agent!',
-      }
+      // Mock ADK response
+      const adkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Hello from agent!' }],
+            role: 'model',
+          },
+          invocationId: 'e-test-123',
+          author: 'model',
+          actions: {
+            stateDelta: {},
+            artifactDelta: {},
+          },
+        },
+      ]
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => agentResponse,
+        json: async () => adkResponse,
       })
 
       // Simulate incoming message
@@ -93,15 +114,16 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
       // Route message
       const result = await messageRouter.routeMessage(incomingMessage)
 
-      // Verify agent was called
+      // Verify agent was called with ADK format
       expect(fetchMock).toHaveBeenCalledTimes(1)
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:8000/agent',
+        'http://localhost:8000/run',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
+          body: expect.stringContaining('"app_name":"test_agent"'),
         })
       )
 
@@ -117,7 +139,7 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
 
       expect(sentMessage.metadata).toMatchObject({
         originalMessageId: 'MSG_001',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
       })
 
       // Verify result
@@ -126,23 +148,26 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
     })
 
     it('should not send message through provider if agent does not respond', async () => {
-      // Setup route
+      // Setup route with ADK config
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
         environment: 'lab',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
       }
       await routesRepository.addRoute(route)
 
-      // Mock agent response without response text
-      const agentResponse: AgentResponse = {
-        success: true,
-        // No response field
-      }
+      // Mock ADK response with no model events (empty array or only user events)
+      const adkResponse: any[] = []
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => agentResponse,
+        json: async () => adkResponse,
       })
 
       // Simulate incoming message
@@ -172,20 +197,22 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
       // Setup route
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
-      // Mock agent error response
-      const agentResponse: AgentResponse = {
-        success: false,
-        error: 'Agent processing failed',
-      }
-
+      // Mock ADK HTTP error (404 - agent not found)
       fetchMock.mockResolvedValueOnce({
-        ok: true,
-        json: async () => agentResponse,
+        ok: false,
+        status: 404,
+        text: async () => 'Agent not found',
       })
 
       // Simulate incoming message
@@ -208,27 +235,43 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
 
       // Verify result
       expect(result.success).toBe(false)
-      expect(result.error).toContain('Agent processing failed')
+      expect(result.error).toContain('ADK agent endpoint returned 404')
     })
 
     it('should handle provider errors gracefully', async () => {
       // Setup route
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
-      // Mock agent response
-      const agentResponse: AgentResponse = {
-        success: true,
-        response: 'Hello from agent!',
-      }
+      // Mock ADK response
+      const adkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Hello from agent!' }],
+            role: 'model',
+          },
+          invocationId: 'e-test-123',
+          author: 'model',
+          actions: {
+            stateDelta: {},
+            artifactDelta: {},
+          },
+        },
+      ]
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => agentResponse,
+        json: async () => adkResponse,
       })
 
       // Mock provider to throw error
@@ -262,23 +305,36 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
       // Setup route
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
-      // Mock agent response
-      const agentResponse: AgentResponse = {
-        success: true,
-        response: 'Response with metadata',
-        metadata: {
-          customField: 'customValue',
+      // Mock ADK response
+      const adkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Response with metadata' }],
+            role: 'model',
+          },
+          invocationId: 'e-test-123',
+          author: 'model',
+          actions: {
+            stateDelta: {},
+            artifactDelta: {},
+          },
         },
-      }
+      ]
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => agentResponse,
+        json: async () => adkResponse,
       })
 
       // Simulate incoming message
@@ -302,7 +358,7 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
 
       expect(sentMessage.metadata).toMatchObject({
         originalMessageId: 'MSG_005',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
       })
     })
 
@@ -310,18 +366,36 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
       // Setup route
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
-      // Mock agent response
+      // Mock ADK response
+      const adkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Response' }],
+            role: 'model',
+          },
+          invocationId: 'e-test-123',
+          author: 'model',
+          actions: {
+            stateDelta: {},
+            artifactDelta: {},
+          },
+        },
+      ]
+
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          success: true,
-          response: 'Response',
-        }),
+        json: async () => adkResponse,
       })
 
       // Test with JID format in 'from' field
@@ -346,18 +420,36 @@ describe('Message Sending Flow (wa2ai → Provider → WhatsApp)', () => {
       // Setup route
       const route: Route = {
         channelId: 'test-channel-123',
-        agentEndpoint: 'http://localhost:8000/agent',
+        agentEndpoint: 'http://localhost:8000',
+        config: {
+          adk: {
+            appName: 'test_agent',
+            baseUrl: 'http://localhost:8000',
+          },
+        },
         environment: 'lab',
       }
       await routesRepository.addRoute(route)
 
-      // Mock agent response
+      // Mock ADK response
+      const adkResponse = [
+        {
+          content: {
+            parts: [{ text: 'Response from agent' }],
+            role: 'model',
+          },
+          invocationId: 'e-test-123',
+          author: 'model',
+          actions: {
+            stateDelta: {},
+            artifactDelta: {},
+          },
+        },
+      ]
+
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          success: true,
-          response: 'Response from agent',
-        }),
+        json: async () => adkResponse,
       })
 
       // Simulate incoming message

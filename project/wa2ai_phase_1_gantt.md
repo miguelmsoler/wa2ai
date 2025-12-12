@@ -83,10 +83,10 @@ Estimated duration: **10–14 days** working **4 hours per day** (total: **41–
 
 ## 🗓️ Day 6 — wa2ai ↔ ADK Agent integration (3–4 h)
 
-- Define wa2ai → Agent contract and document (0.5 h).
-- Implement HTTP client `callAgent` with timeout and errors (1 h).
-- Test simulated call to validate response (1 h).
-- Add error logging (0.5 h).
++ Define wa2ai → Agent contract and document (0.5 h).
++ Implement HTTP client `callAgent` with timeout and errors (1 h).
++ Test simulated call to validate response (1 h).
++ Add error logging (0.5 h).
 
 ---
 

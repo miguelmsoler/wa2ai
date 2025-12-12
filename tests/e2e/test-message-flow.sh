@@ -20,7 +20,7 @@ CHANNEL_ID="${1:-5491155551234}"
 AGENT_PORT="${2:-8000}"
 AGENT_URL="http://localhost:${AGENT_PORT}"
 WA2AI_URL="http://localhost:3000"
-MOCK_AGENT_SCRIPT="tests/fixtures/mock-agent.js"
+MOCK_AGENT_SCRIPT="tests/fixtures/adk-mock-agent.js"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -62,13 +62,13 @@ if curl -s "${AGENT_URL}" > /dev/null 2>&1; then
   MOCK_AGENT_PID=""
 else
   echo "Starting mock agent on port ${AGENT_PORT}..."
-  node "${MOCK_AGENT_SCRIPT}" "${AGENT_PORT}" "echo" > /tmp/mock-agent.log 2>&1 &
+  node "${MOCK_AGENT_SCRIPT}" "${AGENT_PORT}" "test_agent" > /tmp/adk-mock-agent.log 2>&1 &
   MOCK_AGENT_PID=$!
   sleep 2
   
   if ! kill -0 $MOCK_AGENT_PID 2>/dev/null; then
     echo -e "${RED}Error: Failed to start mock agent${NC}"
-    cat /tmp/mock-agent.log
+    cat /tmp/adk-mock-agent.log
     exit 1
   fi
   
@@ -124,7 +124,7 @@ echo "   docker compose -f infra/docker-compose.lab.yml logs -f wa2ai-lab"
 echo ""
 echo "3. Monitor mock agent logs:"
 if [ -n "$MOCK_AGENT_PID" ]; then
-  echo "   tail -f /tmp/mock-agent.log"
+  echo "   tail -f /tmp/adk-mock-agent.log"
 else
   echo "   (check the terminal where mock agent is running)"
 fi
@@ -161,7 +161,7 @@ echo ""
 
 # Monitor logs
 if [ -n "$MOCK_AGENT_PID" ]; then
-  tail -f /tmp/mock-agent.log &
+    tail -f /tmp/adk-mock-agent.log &
   TAIL_PID=$!
   wait $TAIL_PID
 else

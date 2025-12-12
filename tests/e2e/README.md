@@ -39,8 +39,9 @@ node tests/fixtures/mock-agent.js 8000
 
 Deberías ver:
 ```
-[MockAgent] Server running on http://0.0.0.0:8000
-[MockAgent] Ready to receive messages...
+[AdkMockAgent] Server running on http://0.0.0.0:8000
+[AdkMockAgent] App name: test_agent
+[AdkMockAgent] Ready to receive messages...
 [MockAgent] Press Ctrl+C to stop
 ```
 
@@ -61,11 +62,17 @@ CHANNEL_ID="${WA2AI_TEST_CHANNEL_ID:-5491155551234}"
 
 curl -X POST http://localhost:3000/api/routes \
   -H "Content-Type: application/json" \
-  -d "{
-    \"channelId\": \"${CHANNEL_ID}\",
-    \"agentEndpoint\": \"http://host.docker.internal:8000\",
-    \"environment\": \"lab\"
-  }"
+  -d '{
+    "channelId": "'"${CHANNEL_ID}"'",
+    "agentEndpoint": "http://host.docker.internal:8000",
+    "environment": "lab",
+    "config": {
+      "adk": {
+        "appName": "test_agent",
+        "baseUrl": "http://host.docker.internal:8000"
+      }
+    }
+  }'
 ```
 
 **Nota:** Si tienes configurado `WA2AI_TEST_CHANNEL_ID` en tu archivo `.env`, puedes usar `${WA2AI_TEST_CHANNEL_ID}` directamente. Si no está configurado, el comando usará el valor por defecto `5491155551234`.
@@ -152,13 +159,13 @@ Deberías ver estas líneas en orden:
 
 En la terminal donde corre el mock agent, deberías ver:
 ```
-[MockAgent] Received message: { id: '...', from: '...', text: 'Hola, esto es una prueba', ... }
-[MockAgent] Sent response (1/3): { messageId: '...', response: 'Echo from wa2ai: Hola, esto es una prueba' }
+[AdkMockAgent] Received ADK request: { app_name: 'test_agent', user_id: '...', session_id: '...', message: 'Hola, esto es una prueba', ... }
+[AdkMockAgent] Sent response (1/3): { sessionId: '...', eventCount: 2, responseText: 'Echo from ADK mock agent: Hola, esto es una prueba' }
 ```
 
 **Nota sobre el límite de mensajes:**
 - Los primeros 3 mensajes recibirán respuesta automática
-- Después del 3er mensaje, verás: `[MockAgent] Message limit reached (3). Logging only, no response sent.`
+- Después del 3er mensaje, verás: `[AdkMockAgent] Message limit reached (3). Logging only, no response sent.`
 - Los mensajes posteriores se loguean pero no se responde (mecanismo de seguridad)
 
 ### 4.3 Verificar respuesta en WhatsApp
@@ -198,10 +205,15 @@ curl http://localhost:3000/qr/status | python3 -m json.tool
 
 ### Respuestas automáticas
 
-El mock agent responde automáticamente a los mensajes recibidos con el formato:
+El ADK mock agent responde automáticamente a los mensajes recibidos con el formato:
 ```
-Echo from wa2ai: {mensaje original}
+Echo from ADK mock agent: {mensaje original}
 ```
+
+El mock agent implementa el formato ADK:
+- Endpoint: `POST /run`
+- Request: Formato ADK con `app_name`, `user_id`, `session_id`, `new_message`
+- Response: Array de eventos ADK con el texto de respuesta
 
 ### Límite de seguridad
 
@@ -214,15 +226,15 @@ Esto previene que durante las pruebas se envíen mensajes a todo el mundo.
 
 **Ejemplo de logs:**
 ```
-[MockAgent] Sent response (1/3): { messageId: '...', response: 'Echo from wa2ai: Mensaje 1' }
-[MockAgent] Sent response (2/3): { messageId: '...', response: 'Echo from wa2ai: Mensaje 2' }
-[MockAgent] Sent response (3/3): { messageId: '...', response: 'Echo from wa2ai: Mensaje 3' }
-[MockAgent] Message limit reached (3). Logging only, no response sent. { messageId: '...', messagesSentCount: 3 }
+[AdkMockAgent] Sent response (1/3): { sessionId: '...', eventCount: 2, responseText: 'Echo from ADK mock agent: Mensaje 1' }
+[AdkMockAgent] Sent response (2/3): { sessionId: '...', eventCount: 2, responseText: 'Echo from ADK mock agent: Mensaje 2' }
+[AdkMockAgent] Sent response (3/3): { sessionId: '...', eventCount: 2, responseText: 'Echo from ADK mock agent: Mensaje 3' }
+[AdkMockAgent] Message limit reached (3). Logging only, no response sent. { sessionId: '...', messagesSentCount: 3 }
 ```
 
 **Para probar más de 3 mensajes:**
 1. Detén el mock agent (Ctrl+C)
-2. Reinícialo: `node tests/fixtures/mock-agent.js 8000`
+2. Reinícialo: `node tests/fixtures/adk-mock-agent.js 8000 test_agent`
 3. El contador se reinicia y podrás enviar otros 3 mensajes
 
 ## Troubleshooting

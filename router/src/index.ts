@@ -16,7 +16,6 @@ import { EvolutionProvider } from './providers/evolution-provider.js'
 import { PostgresRoutesRepository } from './infra/postgres-routes-repository.js'
 import { RouterService } from './core/router-service.js'
 import { MessageRouter } from './core/message-router.js'
-import { HttpAgentClient } from './infra/http-agent-client.js'
 import { setupBaileysDirectRouting } from './providers/baileys-routing.js'
 
 const DEBUG = process.env.WA2AI_DEBUG === 'true'
@@ -83,10 +82,11 @@ function initializeRouting(): MessageRouter {
   // Create router service
   const routerService = new RouterService(globalRoutesRepository)
 
-  // Create agent client (infrastructure)
-  const agentClient = new HttpAgentClient({
-    timeout: 30000, // 30 seconds
-  })
+  // Note: HttpAgentClient is now created per-route in MessageRouter
+  // because it requires ADK configuration from the route
+  // This agentClient is kept for backward compatibility but won't be used
+  // (MessageRouter creates its own ADK clients per route)
+  const agentClient = null as any // Placeholder - not used
 
   // Create WhatsApp provider
   const whatsappProvider = createWhatsAppProvider()
