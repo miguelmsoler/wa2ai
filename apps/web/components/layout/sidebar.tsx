@@ -37,9 +37,16 @@ const navigation: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar()
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar()
 
   const isVisible = isExpanded || isHovered || isMobileOpen
+
+  // Close mobile drawer when clicking on a link
+  const handleLinkClick = () => {
+    if (isMobileOpen) {
+      toggleMobileSidebar()
+    }
+  }
 
   return (
     <aside
@@ -69,7 +76,7 @@ export function Sidebar() {
             : 'justify-start px-5'
         )}
       >
-        <Link href="/dashboard">
+        <Link href="/dashboard" onClick={handleLinkClick}>
           {isVisible ? (
             <span className="text-xl font-semibold">wa2ai</span>
           ) : (
@@ -88,6 +95,7 @@ export function Sidebar() {
               <Link
                 key={item.path}
                 href={item.path}
+                onClick={handleLinkClick}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
                   'group',

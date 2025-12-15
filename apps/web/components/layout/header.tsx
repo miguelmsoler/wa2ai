@@ -2,17 +2,16 @@
 
 import { useSidebar } from '@/context/sidebar-context'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
+import { ConnectionStatusBadge } from '@/components/layout/connection-status-badge'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
 
 interface HeaderProps {
-  statusBadge?: React.ReactNode // Optional status badge (e.g., connection status, user info, etc.)
   rightContent?: React.ReactNode // Optional right-side content (notifications, user menu, etc.)
 }
 
-export function Header({ statusBadge, rightContent }: HeaderProps) {
+export function Header({ rightContent }: HeaderProps) {
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar()
 
   const handleToggle = () => {
@@ -47,7 +46,7 @@ export function Header({ statusBadge, rightContent }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {statusBadge}
+          <ConnectionStatusBadge />
           <ThemeToggle />
           {rightContent}
         </div>
