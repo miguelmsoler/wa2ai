@@ -6,14 +6,43 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Dialog root component (from Radix UI).
+ * 
+ * Controls the open/closed state of the dialog.
+ */
 const Dialog = DialogPrimitive.Root
 
+/**
+ * Dialog trigger component (from Radix UI).
+ * 
+ * Button or element that opens the dialog when clicked.
+ */
 const DialogTrigger = DialogPrimitive.Trigger
 
+/**
+ * Dialog portal component (from Radix UI).
+ * 
+ * Renders dialog content in a portal to ensure proper z-index stacking.
+ */
 const DialogPortal = DialogPrimitive.Portal
 
+/**
+ * Dialog close component (from Radix UI).
+ * 
+ * Button or element that closes the dialog when clicked.
+ */
 const DialogClose = DialogPrimitive.Close
 
+/**
+ * Dialog overlay component.
+ * 
+ * Semi-transparent backdrop that appears behind the dialog content.
+ * 
+ * @param props - Dialog overlay props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for dialog overlay
+ */
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -29,6 +58,17 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+/**
+ * Dialog content component.
+ * 
+ * Main container for dialog content with proper positioning, animations,
+ * and close button.
+ * 
+ * @param props - Dialog content props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @param props.children - Dialog content
+ * @returns React component for dialog content
+ */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -53,6 +93,15 @@ const DialogContent = React.forwardRef<
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
+/**
+ * Dialog header component.
+ * 
+ * Container for dialog title and description with proper spacing.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for dialog header
+ */
 const DialogHeader = ({
   className,
   ...props
@@ -67,6 +116,15 @@ const DialogHeader = ({
 )
 DialogHeader.displayName = "DialogHeader"
 
+/**
+ * Dialog footer component.
+ * 
+ * Container for dialog action buttons with proper spacing and responsive layout.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for dialog footer
+ */
 const DialogFooter = ({
   className,
   ...props
@@ -81,6 +139,15 @@ const DialogFooter = ({
 )
 DialogFooter.displayName = "DialogFooter"
 
+/**
+ * Dialog title component.
+ * 
+ * Styled heading for dialog titles with proper typography.
+ * 
+ * @param props - Dialog title props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for dialog title
+ */
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -96,6 +163,15 @@ const DialogTitle = React.forwardRef<
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
+/**
+ * Dialog description component.
+ * 
+ * Styled text for dialog descriptions with muted foreground color.
+ * 
+ * @param props - Dialog description props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for dialog description
+ */
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>

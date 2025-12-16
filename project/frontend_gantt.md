@@ -65,17 +65,17 @@ Estimated duration: **8–10 days** working **4–5 hours per day** (total: **40
 
 ## 🗓️ Day 4 — Routes list screen (5–6 h)
 
-- Create Routes List layout (`app/routes/page.tsx`) (0.5 h).
-- Create Route Card component (1–1.5 h).
-- Integrate with `GET /api/routes` endpoint (0.3 h).
-- Implement search functionality (filter by channelId/endpoint) (1 h).
-- Implement filter dropdown (All/Lab/Prod/With Regex/Without Regex) (0.5–1 h).
-- Create empty state component ("No routes") (0.3 h).
-- Implement loading states with skeletons (0.5 h).
-- Add "New Route" button with navigation (0.2 h).
-- Add "Edit" button with navigation to edit form (0.2 h).
-- Implement "Delete" action with confirmation modal (1 h).
-- Test all interactions and error handling (0.3 h).
++ Create Routes List layout (`app/routes/page.tsx`) (0.5 h).
++ Create Route Card component (1–1.5 h).
++ Integrate with `GET /api/routes` endpoint (0.3 h).
++ Implement search functionality (filter by channelId/endpoint) (1 h). ✅ **Completed:** Search input implemented with real-time filtering by channelId or agentEndpoint (case-insensitive). Includes search icon and placeholder text. Results update instantly as user types.
++ Implement filter dropdown (All/Lab/Prod/With Regex/Without Regex) (0.5–1 h). ✅ **Completed:** Filter dropdown implemented with all options (All Routes, Lab Only, Prod Only, With Regex, Without Regex). Filtering logic uses useMemo for performance. Results count displayed showing filtered vs total routes.
++ Create empty state component ("No routes") (0.3 h).
++ Implement loading states with skeletons (0.5 h).
++ Add "New Route" button with navigation (0.2 h).
++ Add "Edit" button with navigation to edit form (0.2 h).
++ Implement "Delete" action with confirmation modal (1 h).
++ Test all interactions and error handling (0.3 h).
 
 ---
 

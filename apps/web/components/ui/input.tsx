@@ -2,6 +2,17 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Input component for text input fields.
+ * 
+ * Provides a styled input element with proper focus states, disabled states,
+ * and file input support.
+ * 
+ * @param props - Standard HTML input element props
+ * @param props.className - Optional additional CSS classes
+ * @param props.type - Input type (text, email, password, file, etc.)
+ * @returns React component for input field
+ */
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
     return (

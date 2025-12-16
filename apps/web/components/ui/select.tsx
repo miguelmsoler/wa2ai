@@ -6,12 +6,37 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Select root component (from Radix UI).
+ * 
+ * Controls the open/closed state and value of the select.
+ */
 const Select = SelectPrimitive.Root
 
+/**
+ * Select group component (from Radix UI).
+ * 
+ * Groups related select items together.
+ */
 const SelectGroup = SelectPrimitive.Group
 
+/**
+ * Select value component (from Radix UI).
+ * 
+ * Displays the selected value or placeholder text.
+ */
 const SelectValue = SelectPrimitive.Value
 
+/**
+ * Select trigger component.
+ * 
+ * Button that opens the select dropdown when clicked.
+ * 
+ * @param props - Select trigger props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @param props.children - Trigger content (typically SelectValue)
+ * @returns React component for select trigger
+ */
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
@@ -32,6 +57,15 @@ const SelectTrigger = React.forwardRef<
 ))
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
+/**
+ * Select scroll up button component.
+ * 
+ * Button that appears at the top of long select dropdowns to scroll up.
+ * 
+ * @param props - Select scroll up button props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for scroll up button
+ */
 const SelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
@@ -49,6 +83,15 @@ const SelectScrollUpButton = React.forwardRef<
 ))
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
 
+/**
+ * Select scroll down button component.
+ * 
+ * Button that appears at the bottom of long select dropdowns to scroll down.
+ * 
+ * @param props - Select scroll down button props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for scroll down button
+ */
 const SelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
@@ -67,6 +110,17 @@ const SelectScrollDownButton = React.forwardRef<
 SelectScrollDownButton.displayName =
   SelectPrimitive.ScrollDownButton.displayName
 
+/**
+ * Select content component.
+ * 
+ * Container for select dropdown items with proper positioning and animations.
+ * 
+ * @param props - Select content props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @param props.children - Select items
+ * @param props.position - Positioning strategy ('popper' or 'item-aligned')
+ * @returns React component for select content dropdown
+ */
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
@@ -99,6 +153,15 @@ const SelectContent = React.forwardRef<
 ))
 SelectContent.displayName = SelectPrimitive.Content.displayName
 
+/**
+ * Select label component.
+ * 
+ * Styled label for grouping select items.
+ * 
+ * @param props - Select label props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for select label
+ */
 const SelectLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
@@ -111,6 +174,17 @@ const SelectLabel = React.forwardRef<
 ))
 SelectLabel.displayName = SelectPrimitive.Label.displayName
 
+/**
+ * Select item component.
+ * 
+ * Individual selectable option in the dropdown with check indicator.
+ * 
+ * @param props - Select item props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @param props.children - Item text content
+ * @param props.value - Item value (must be unique)
+ * @returns React component for select item
+ */
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
@@ -133,6 +207,15 @@ const SelectItem = React.forwardRef<
 ))
 SelectItem.displayName = SelectPrimitive.Item.displayName
 
+/**
+ * Select separator component.
+ * 
+ * Visual separator line between groups of select items.
+ * 
+ * @param props - Select separator props from Radix UI
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for select separator
+ */
 const SelectSeparator = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>
