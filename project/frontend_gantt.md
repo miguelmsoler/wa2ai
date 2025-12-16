@@ -45,18 +45,18 @@ Estimated duration: **8–10 days** working **4–5 hours per day** (total: **40
 ## 🗓️ Day 3 — Dashboard and Connection screen (6–7 h)
 
 ### Dashboard (`app/dashboard/page.tsx`)
-- Create Connection Status Card component (1–1.5 h).
++ Create Connection Status Card component (1–1.5 h). ✅ **Completed:** Created `ConnectionStatusCard` component in `components/dashboard/connection-status-card.tsx`. Displays connection status with appropriate colors and icons (Connected: green, Connecting: yellow, QR Ready: blue, Disconnected/Error: red). Shows provider info (Baileys), connection timestamp when connected, error messages, and action buttons (View QR Code/View Connection). Integrated into dashboard page. Uses `useConnectionStatus()` hook for real-time updates via SWR polling. Includes loading skeleton state.
 - Create Routes Summary Card component (0.5–1 h).
-- Implement Quick Actions section (0.5 h).
-+ Integrate with `/qr/status` API (SWR hook) (0.5 h). ✅ **Completed:** `useConnectionStatus()` hook already implemented in `lib/api-client.ts` with auto-refresh via SWR polling.
-+ Integrate with `/api/routes` API for summary (0.5 h). ✅ **Completed:** `useRoutes()` hook already implemented in `lib/api-client.ts` with auto-refresh.
++ Implement Quick Actions section (0.5 h). ✅ **Completed:** Quick Actions section implemented with Card component containing two action buttons: "Create Route" (navigates to `/routes/new`) and "Connection Settings" (navigates to `/connection`). Uses shadcn/ui Button and Card components with lucide-react icons (Plus, Settings). Responsive design with flex-wrap for mobile compatibility.
++ Integrate with `/qr/status` API (SWR hook) (0.5 h). ✅ **Completed:** `useConnectionStatus()` hook implemented in `lib/hooks/use-connection-status.ts` with auto-refresh via SWR polling.
++ Integrate with `/api/routes` API for summary (0.5 h). ✅ **Completed:** `useRoutes()` hook implemented in `lib/hooks/use-routes.ts` with auto-refresh.
 + Implement auto-refresh for connection status (0.3 h). ✅ **Completed:** Auto-refresh configured via `STATUS_REFRESH_INTERVAL` environment variable (default 5s) in `useConnectionStatus()` hook.
 - Add loading states (skeletons) (0.5 h).
 
 ### Connection Screen (`app/connection/page.tsx`)
 - Create connection state components (Connected, QR, Connecting, Error) (1.5–2 h).
 - Implement QR code display with auto-refresh (0.5–1 h).
-+ Integrate with `/qr/image` and `/qr/status` endpoints (0.5 h). ✅ **Completed:** `getQRImageUrl()` utility and `useConnectionStatus()` hook already implemented in `lib/api-client.ts`.
++ Integrate with `/qr/image` and `/qr/status` endpoints (0.5 h). ✅ **Completed:** `getQRImageUrl()` utility implemented in `lib/api/connection.ts` and `useConnectionStatus()` hook in `lib/hooks/use-connection-status.ts`.
 + Implement polling for status updates (every 3s) (0.3 h). ✅ **Completed:** Polling configured via `STATUS_REFRESH_INTERVAL` environment variable (default 5s) in `useConnectionStatus()` hook.
 - Add instructions and helper text (0.2 h).
 - Handle connection state transitions (0.3 h).

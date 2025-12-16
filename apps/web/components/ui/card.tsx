@@ -2,6 +2,15 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Card container component.
+ * 
+ * Provides a styled container for card content with border, shadow, and rounded corners.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for card container
+ */
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -17,6 +26,15 @@ const Card = React.forwardRef<
 ))
 Card.displayName = "Card"
 
+/**
+ * Card header component.
+ * 
+ * Container for card title and description with proper spacing.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for card header
+ */
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -29,6 +47,15 @@ const CardHeader = React.forwardRef<
 ))
 CardHeader.displayName = "CardHeader"
 
+/**
+ * Card title component.
+ * 
+ * Styled heading for card titles with proper typography.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for card title
+ */
 const CardTitle = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -41,6 +68,15 @@ const CardTitle = React.forwardRef<
 ))
 CardTitle.displayName = "CardTitle"
 
+/**
+ * Card description component.
+ * 
+ * Styled text for card descriptions with muted foreground color.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for card description
+ */
 const CardDescription = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -53,6 +89,15 @@ const CardDescription = React.forwardRef<
 ))
 CardDescription.displayName = "CardDescription"
 
+/**
+ * Card content component.
+ * 
+ * Container for main card content with proper padding.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for card content
+ */
 const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -61,6 +106,15 @@ const CardContent = React.forwardRef<
 ))
 CardContent.displayName = "CardContent"
 
+/**
+ * Card footer component.
+ * 
+ * Container for card footer content (typically action buttons) with proper spacing.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for card footer
+ */
 const CardFooter = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>

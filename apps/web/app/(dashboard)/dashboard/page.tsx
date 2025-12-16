@@ -1,3 +1,10 @@
+import Link from 'next/link'
+import { Plus, Settings } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { RoutesSummaryCard } from '@/components/dashboard/routes-summary-card'
+import { ConnectionStatusCard } from '@/components/dashboard/connection-status-card'
+
 /**
  * Dashboard page component.
  * 
@@ -17,22 +24,38 @@ export default function DashboardPage() {
         </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Placeholder for Connection Status Card */}
-        <div className="rounded-lg border bg-card p-6">
-          <h2 className="text-lg font-semibold">Connection Status</h2>
-          <p className="text-sm text-muted-foreground mt-2">
-            WhatsApp connection status will be displayed here.
-          </p>
-        </div>
+        {/* Connection Status Card */}
+        <ConnectionStatusCard />
         
-        {/* Placeholder for Routes Summary Card */}
-        <div className="rounded-lg border bg-card p-6">
-          <h2 className="text-lg font-semibold">Active Routes</h2>
-          <p className="text-sm text-muted-foreground mt-2">
-            Route summary will be displayed here.
-          </p>
-        </div>
+        {/* Routes Summary Card */}
+        <RoutesSummaryCard />
       </div>
+
+      {/* Quick Actions Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>
+            Quick access to common tasks and settings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href="/routes/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Route
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/connection">
+                <Settings className="mr-2 h-4 w-4" />
+                Connection Settings
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

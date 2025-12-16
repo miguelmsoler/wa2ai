@@ -11,6 +11,7 @@
 
 import useSWR from 'swr'
 import { fetcher } from '../api/client'
+import { logger, isDebugMode } from '../utils/logger'
 import type { Route, ApiResponse } from '../types'
 
 /**
@@ -33,8 +34,21 @@ export function useRoute(channelId: string | null) {
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      onError: (err) => {
+        logger.error('[useRoute] Error fetching route', {
+          channelId,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      },
     }
   )
+
+  if (isDebugMode() && data) {
+    logger.debug('[useRoute] Data updated', {
+      channelId,
+      hasRoute: !!data.data,
+    })
+  }
 
   return {
     route: data?.data || null,

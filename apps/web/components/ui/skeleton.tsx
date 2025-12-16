@@ -1,5 +1,15 @@
 import { cn } from "@/lib/utils"
 
+/**
+ * Skeleton loading component.
+ * 
+ * Provides a pulsing placeholder element for loading states.
+ * Used to indicate that content is being loaded and improve perceived performance.
+ * 
+ * @param props - Standard HTML div attributes
+ * @param props.className - Optional additional CSS classes
+ * @returns React component for skeleton loading placeholder
+ */
 function Skeleton({
   className,
   ...props
