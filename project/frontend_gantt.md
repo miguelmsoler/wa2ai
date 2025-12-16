@@ -46,20 +46,20 @@ Estimated duration: **8–10 days** working **4–5 hours per day** (total: **40
 
 ### Dashboard (`app/dashboard/page.tsx`)
 + Create Connection Status Card component (1–1.5 h). ✅ **Completed:** Created `ConnectionStatusCard` component in `components/dashboard/connection-status-card.tsx`. Displays connection status with appropriate colors and icons (Connected: green, Connecting: yellow, QR Ready: blue, Disconnected/Error: red). Shows provider info (Baileys), connection timestamp when connected, error messages, and action buttons (View QR Code/View Connection). Integrated into dashboard page. Uses `useConnectionStatus()` hook for real-time updates via SWR polling. Includes loading skeleton state.
-- Create Routes Summary Card component (0.5–1 h).
++ Create Routes Summary Card component (0.5–1 h). ✅ **Completed:** Created `RoutesSummaryCard` component in `components/dashboard/routes-summary-card.tsx`. Displays route statistics (total, lab, prod counts) with loading and error states. Includes action buttons for route management (Manage Routes, New Route). Integrated into dashboard page. Uses `useRoutes()` hook for data fetching. Includes comprehensive unit tests.
 + Implement Quick Actions section (0.5 h). ✅ **Completed:** Quick Actions section implemented with Card component containing two action buttons: "Create Route" (navigates to `/routes/new`) and "Connection Settings" (navigates to `/connection`). Uses shadcn/ui Button and Card components with lucide-react icons (Plus, Settings). Responsive design with flex-wrap for mobile compatibility.
 + Integrate with `/qr/status` API (SWR hook) (0.5 h). ✅ **Completed:** `useConnectionStatus()` hook implemented in `lib/hooks/use-connection-status.ts` with auto-refresh via SWR polling.
 + Integrate with `/api/routes` API for summary (0.5 h). ✅ **Completed:** `useRoutes()` hook implemented in `lib/hooks/use-routes.ts` with auto-refresh.
 + Implement auto-refresh for connection status (0.3 h). ✅ **Completed:** Auto-refresh configured via `STATUS_REFRESH_INTERVAL` environment variable (default 5s) in `useConnectionStatus()` hook.
-- Add loading states (skeletons) (0.5 h).
++ Add loading states (skeletons) (0.5 h). ✅ **Completed:** Created `CardSkeleton` and `CardSkeletonCustom` components in `components/ui/card-skeleton.tsx`. Implemented loading skeletons in `ConnectionStatusCard` and `RoutesSummaryCard` components. Added skeleton states to connection and routes pages. Includes comprehensive unit tests.
 
 ### Connection Screen (`app/connection/page.tsx`)
-- Create connection state components (Connected, QR, Connecting, Error) (1.5–2 h).
-- Implement QR code display with auto-refresh (0.5–1 h).
++ Create connection state components (Connected, QR, Connecting, Error) (1.5–2 h). ✅ **Completed:** Connection page fully implemented with all state components. Displays Connected state (green badge, success message), QR Ready state (blue badge, QR code display), Connecting state (yellow badge), Disconnected state (red badge), and Error state (red badge with error message). All states properly styled with appropriate colors and badges.
++ Implement QR code display with auto-refresh (0.5–1 h). ✅ **Completed:** QR code display implemented with `useQRImageUrl()` hook that includes cache busting. QR code image refreshes automatically via URL timestamp. Displayed in centered card with white background. Includes instructions text below QR code.
 + Integrate with `/qr/image` and `/qr/status` endpoints (0.5 h). ✅ **Completed:** `getQRImageUrl()` utility implemented in `lib/api/connection.ts` and `useConnectionStatus()` hook in `lib/hooks/use-connection-status.ts`.
 + Implement polling for status updates (every 3s) (0.3 h). ✅ **Completed:** Polling configured via `STATUS_REFRESH_INTERVAL` environment variable (default 5s) in `useConnectionStatus()` hook.
-- Add instructions and helper text (0.2 h).
-- Handle connection state transitions (0.3 h).
++ Add instructions and helper text (0.2 h). ✅ **Completed:** Instructions added below QR code: "Open WhatsApp on your phone, go to Settings → Linked Devices, and scan this QR code." Connection status descriptions in CardDescription that change based on state (loading, connected, QR available, waiting).
++ Handle connection state transitions (0.3 h). ✅ **Completed:** Connection state transitions fully handled. Component reacts to all status changes (disconnected → connecting → qr_ready → connected). Error states properly displayed. Loading states shown during transitions. Conditional rendering based on `connected`, `qrAvailable`, `status`, and `error` flags.
 
 ---
 
