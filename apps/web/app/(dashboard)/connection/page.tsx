@@ -1,3 +1,11 @@
+/**
+ * WhatsApp connection management page.
+ * 
+ * Displays QR code for WhatsApp authentication and connection status.
+ * Allows users to connect their WhatsApp account to wa2ai.
+ * 
+ * @returns React component for connection management page
+ */
 export default function ConnectionPage() {
   return (
     <div className="space-y-6">

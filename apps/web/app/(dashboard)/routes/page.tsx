@@ -1,3 +1,11 @@
+/**
+ * Routes management page.
+ * 
+ * Displays the list of message routes and provides interface for managing
+ * routing rules (create, update, delete routes).
+ * 
+ * @returns React component for routes management page
+ */
 export default function RoutesPage() {
   return (
     <div className="space-y-6">

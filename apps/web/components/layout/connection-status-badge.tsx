@@ -1,6 +1,6 @@
 'use client'
 
-import { useConnectionStatus } from '@/lib/api-client'
+import { useConnectionStatus } from '@/lib/hooks/use-connection-status'
 import { Badge } from '@/components/ui/badge'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'

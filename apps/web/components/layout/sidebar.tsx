@@ -10,13 +10,23 @@ import {
   Route
 } from 'lucide-react'
 
+/**
+ * Navigation item configuration.
+ */
 type NavItem = {
+  /** Display name of the navigation item */
   name: string
+  /** Icon component to display */
   icon: React.ReactNode
+  /** Route path for navigation */
   path: string
 }
 
-// Navigation items for wa2ai MVP
+/**
+ * Navigation items for wa2ai MVP.
+ * 
+ * Defines the main navigation structure for the dashboard.
+ */
 const navigation: NavItem[] = [
   { 
     name: 'Dashboard', 
@@ -35,13 +45,33 @@ const navigation: NavItem[] = [
   },
 ]
 
+/**
+ * Sidebar navigation component.
+ * 
+ * Provides collapsible sidebar navigation with responsive behavior:
+ * - Desktop: Can be expanded/collapsed, shows on hover when collapsed
+ * - Mobile: Slides in/out as drawer overlay
+ * 
+ * Features:
+ * - Auto-collapses on mobile (< 1024px)
+ * - Hover expansion on desktop when collapsed
+ * - Active route highlighting
+ * - Smooth transitions
+ * 
+ * @returns React component for sidebar navigation
+ */
 export function Sidebar() {
   const pathname = usePathname()
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar()
 
   const isVisible = isExpanded || isHovered || isMobileOpen
 
-  // Close mobile drawer when clicking on a link
+  /**
+   * Handles link click to close mobile drawer.
+   * 
+   * When user clicks a navigation link on mobile, the sidebar drawer
+   * should close to provide better UX.
+   */
   const handleLinkClick = () => {
     if (isMobileOpen) {
       toggleMobileSidebar()

@@ -14,6 +14,23 @@ export const metadata: Metadata = {
   description: "WhatsApp to AI Agent Gateway - Manage connections and routes",
 };
 
+/**
+ * Root layout component for the Next.js application.
+ * 
+ * Provides:
+ * - HTML structure with theme support
+ * - Font configuration (Outfit from Google Fonts)
+ * - Theme provider for dark/light mode
+ * - Toast notifications (Toaster component)
+ * - Prevents hydration mismatch by applying theme before React hydration
+ * 
+ * The inline script in <head> applies theme class before React hydrates,
+ * preventing flash of wrong theme on page load.
+ * 
+ * @param props - Root layout props
+ * @param props.children - React children (page content)
+ * @returns Root layout component with providers
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

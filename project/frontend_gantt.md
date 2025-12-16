@@ -27,15 +27,18 @@ Estimated duration: **8–10 days** working **4–5 hours per day** (total: **40
 
 ## 🗓️ Day 2 — Base structure and navigation (5–6 h)
 
-- Create TypeScript types for API responses (`lib/types.ts`) (0.5 h).
-- Implement API client with SWR hooks (`lib/api-client.ts`) (1.5–2 h).
-- Create main layout structure (`app/layout.tsx`) (0.5 h).
-- Implement responsive sidebar navigation (1–1.5 h).
-- Implement header with connection status badge (0.5–1 h).
-- Configure routing structure (dashboard, connection, routes) (0.3 h).
-- Adapt template colors and branding to wa2ai (0.5 h).
-- Implement mobile responsive menu (hamburger) (0.5–1 h).
-- Test navigation between all routes (0.2 h).
++ Create TypeScript types for API responses (`lib/types.ts`) (0.5 h). ✅ **Completed:** Created comprehensive types matching backend models: Route, ConnectionState, ConnectionStatus, Environment, ApiResponse, ApiError. All types align with `router/src/core/models.ts` and API response formats.
++ Implement API client with SWR hooks (`lib/api-client.ts`) (1.5–2 h). ✅ **Completed:** Implemented complete API client with SWR hooks: useRoutes(), useRoute(), useConnectionStatus(). Mutation functions: createRoute(), updateRoute(), deleteRoute(). Utility: getQRImageUrl(). Error handling with ApiError. Refresh intervals from environment variables.
++ Create main layout structure (`app/layout.tsx`) (0.5 h). ✅ **Completed:** Root layout created with ThemeProvider, Toaster, Outfit font, and dark mode script. Metadata updated with wa2ai branding.
++ Implement responsive sidebar navigation (1–1.5 h). ✅ **Completed:** Sidebar component implemented with collapsible/hover expansion, responsive mobile drawer, active route highlighting, and wa2ai navigation (Dashboard, Connection, Routes). Uses SidebarContext for state management.
++ Implement header with connection status badge (0.5–1 h). ✅ **Completed:** Created ConnectionStatusBadge component using useConnectionStatus() hook. Displays status with appropriate colors (Connected: green, Connecting: yellow, QR Ready: blue, Disconnected: red, Error: red). Integrated into Header component. Auto-updates via SWR polling.
++ Configure routing structure (dashboard, connection, routes) (0.3 h). ✅ **Completed:** Route group `(dashboard)` created with shared layout. Pages created: `/dashboard`, `/connection`, `/routes`. Root page redirects to `/dashboard`. All routes functional.
++ Adapt template colors and branding to wa2ai (0.5 h). ✅ **Completed:** TailAdmin-inspired color palette configured (brand #465fff, success, error, warning, gray scales). Outfit font family set. Branding updated to "wa2ai" throughout (sidebar logo, header, metadata). Custom shadows and typography applied.
++ Implement mobile responsive menu (hamburger) (0.5–1 h). ✅ **Completed:** Mobile hamburger menu implemented in Header component with responsive toggle (drawer on mobile, collapse on desktop). Backdrop component for mobile overlay. Fully functional.
++ Test navigation between all routes (0.2 h). ✅ **Completed:** Verified navigation: root `/` redirects to `/dashboard`, sidebar links navigate correctly (Dashboard, Connection, Routes), active route highlighting works, mobile drawer navigation functional, direct URL access works for all routes.
++ Add unit tests for API client (`lib/api-client.ts`) (1–1.5 h). ✅ **Completed:** Created comprehensive unit tests for fetcher, mutator, and mutation functions (createRoute, updateRoute, deleteRoute, getQRImageUrl). Tests cover success cases, error handling (400, 404, 500), non-JSON errors, and network errors. All 12 unit tests passing.
++ Add unit tests for ConnectionStatusBadge component (0.5 h). ✅ **Completed:** Created React Testing Library tests for all component states: loading (spinner), Connected (green), QR Ready (blue), Connecting (yellow), Disconnected (red), Error (red with message), truncation of long errors, and title attributes. All 9 component tests passing.
++ Add integration tests for API client (mocked fetch) (0.5–1 h). ✅ **Completed:** Created integration tests for SWR hooks (useRoutes, useRoute, useConnectionStatus) with mocked HTTP responses. Tests verify data fetching, error handling, loading states, and empty states. All 10 integration tests passing. Total: 31 tests passing.
 
 ---
 
@@ -45,16 +48,16 @@ Estimated duration: **8–10 days** working **4–5 hours per day** (total: **40
 - Create Connection Status Card component (1–1.5 h).
 - Create Routes Summary Card component (0.5–1 h).
 - Implement Quick Actions section (0.5 h).
-- Integrate with `/qr/status` API (SWR hook) (0.5 h).
-- Integrate with `/api/routes` API for summary (0.5 h).
-- Implement auto-refresh for connection status (0.3 h).
++ Integrate with `/qr/status` API (SWR hook) (0.5 h). ✅ **Completed:** `useConnectionStatus()` hook already implemented in `lib/api-client.ts` with auto-refresh via SWR polling.
++ Integrate with `/api/routes` API for summary (0.5 h). ✅ **Completed:** `useRoutes()` hook already implemented in `lib/api-client.ts` with auto-refresh.
++ Implement auto-refresh for connection status (0.3 h). ✅ **Completed:** Auto-refresh configured via `STATUS_REFRESH_INTERVAL` environment variable (default 5s) in `useConnectionStatus()` hook.
 - Add loading states (skeletons) (0.5 h).
 
 ### Connection Screen (`app/connection/page.tsx`)
 - Create connection state components (Connected, QR, Connecting, Error) (1.5–2 h).
 - Implement QR code display with auto-refresh (0.5–1 h).
-- Integrate with `/qr/image` and `/qr/status` endpoints (0.5 h).
-- Implement polling for status updates (every 3s) (0.3 h).
++ Integrate with `/qr/image` and `/qr/status` endpoints (0.5 h). ✅ **Completed:** `getQRImageUrl()` utility and `useConnectionStatus()` hook already implemented in `lib/api-client.ts`.
++ Implement polling for status updates (every 3s) (0.3 h). ✅ **Completed:** Polling configured via `STATUS_REFRESH_INTERVAL` environment variable (default 5s) in `useConnectionStatus()` hook.
 - Add instructions and helper text (0.2 h).
 - Handle connection state transitions (0.3 h).
 

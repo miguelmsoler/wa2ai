@@ -3,6 +3,10 @@
  * 
  * These types must match the backend models in `router/src/core/models.ts`
  * and the API response formats from the backend controllers.
+ * 
+ * Following Clean Architecture, this is the Domain Layer.
+ * 
+ * @module lib/types
  */
 
 /**

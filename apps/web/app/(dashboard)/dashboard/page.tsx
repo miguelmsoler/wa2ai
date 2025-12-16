@@ -1,3 +1,11 @@
+/**
+ * Dashboard page component.
+ * 
+ * Displays system status overview and quick access to main functions.
+ * Shows connection status, active routes summary, and other key metrics.
+ * 
+ * @returns React component for dashboard page
+ */
 export default function DashboardPage() {
   return (
       <div className="space-y-6">

@@ -10,6 +10,14 @@ import {
   ToastViewport,
 } from "@/components/ui/toast"
 
+/**
+ * Toaster component for displaying toast notifications.
+ * 
+ * Renders all active toasts from the toast system.
+ * Must be included in the root layout to display toasts globally.
+ * 
+ * @returns React component that renders toast notifications
+ */
 export function Toaster() {
   const { toasts } = useToast()
 

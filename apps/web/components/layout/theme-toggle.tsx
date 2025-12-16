@@ -5,12 +5,30 @@ import { Button } from '@/components/ui/button'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+/**
+ * Theme toggle button props.
+ */
 interface ThemeToggleProps {
+  /** Optional additional CSS classes */
   className?: string
+  /** Button variant style */
   variant?: 'default' | 'ghost' | 'outline'
+  /** Button size */
   size?: 'default' | 'sm' | 'lg' | 'icon'
 }
 
+/**
+ * Theme toggle button component.
+ * 
+ * Provides a button to switch between light and dark themes.
+ * Displays sun icon in light mode, moon icon in dark mode.
+ * 
+ * @param props - Theme toggle button props
+ * @param props.className - Optional additional CSS classes
+ * @param props.variant - Button variant style (default: 'ghost')
+ * @param props.size - Button size (default: 'icon')
+ * @returns React component for theme toggle button
+ */
 export function ThemeToggle({ 
   className,
   variant = 'ghost',

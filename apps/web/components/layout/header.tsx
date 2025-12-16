@@ -7,13 +7,40 @@ import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
 
+/**
+ * Header component props.
+ */
 interface HeaderProps {
-  rightContent?: React.ReactNode // Optional right-side content (notifications, user menu, etc.)
+  /** Optional right-side content (notifications, user menu, etc.) */
+  rightContent?: React.ReactNode
 }
 
+/**
+ * Header component for dashboard layout.
+ * 
+ * Provides:
+ * - Sidebar toggle button (responsive: different behavior on mobile vs desktop)
+ * - Connection status badge (shows WhatsApp connection state)
+ * - Theme toggle button
+ * - Optional right-side content slot
+ * 
+ * Responsive behavior:
+ * - Mobile: Shows hamburger menu, logo, and status badge
+ * - Desktop: Shows sidebar toggle, connection status, theme toggle, and right content
+ * 
+ * @param props - Header component props
+ * @param props.rightContent - Optional content to display on the right side
+ * @returns React component for application header
+ */
 export function Header({ rightContent }: HeaderProps) {
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar()
 
+  /**
+   * Handles sidebar toggle with responsive behavior.
+   * 
+   * On desktop (>= 1024px): Toggles sidebar expansion
+   * On mobile (< 1024px): Toggles mobile drawer
+   */
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
       toggleSidebar()
